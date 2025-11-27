@@ -1,2 +1,39 @@
+# ---- Python ----
 venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# ---- OS / System ----
 .DS_Store
+Thumbs.db
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+*.ipynb_checkpoint
+
+# ---- FastF1 Cache ----
+cache/
+
+# ---- Logs ----
+*.log
+
+# ---- Environment / Secrets ----
+.env
+.env.*
+
+# ---- Build / Distribution ----
+build/
+dist/
+*.egg-info/
+
+# ---- Streamlit artifacts ----
+.streamlit/
+
+# ---- VS Code ----
+.vscode/
+
+# ---- Misc ----
+*.tmp
