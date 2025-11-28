@@ -2,40 +2,65 @@ import pandas as pd
 import numpy as np
 from scipy.signal import find_peaks
 
-
 # ----------------------------------------------------------
 # 1. Corner Segmentation
 # ----------------------------------------------------------
 
-def segment_corners(tel, min_separation=30):
+def segment_corners(tel, prominence=5, window=40):
     """
-    Segment corners based on local speed minima (apex detection).
-    - Uses the smoothed speed signal
-    - Finds minima (turn apexes) by detecting peaks in -Speed
-    - Adds a Corner column to the telemetry
+    Corner segmentation:
+    - Finds apexes via local speed minima
+    - Detects entry: where speed begins to fall
+    - Detects exit: where speed recovers after apex
+    - Assigns a corner ID only for valid corner segments
     """
 
-    tel = tel.copy()
+    df = tel.copy()
 
-    # Use smoothed speed if exists
-    speed = tel["Speed_smooth"] if "Speed_smooth" in tel.columns else tel["Speed"]
+    # Speed signal (smoothed if available)
+    speed = df["Speed_smooth"] if "Speed_smooth" in df.columns else df["Speed"]
 
-    # Detect minima by finding peaks in -speed
-    inverted = -speed
-    minima, _ = find_peaks(inverted, distance=min_separation)
+    # 1) Apex detection: local minima of speed
+    inv_speed = -speed
+    apex_indices, _ = find_peaks(inv_speed, prominence=prominence)
 
-    # Assign corner IDs
-    tel["Corner"] = 1
+    segments = []
     corner_id = 1
 
-    apex_indices = list(minima)
+    for apex in apex_indices:
+        # Apex distance
+        apex_dist = df["Distance"].iloc[apex]
 
-    for i in range(len(tel)):
-        if i in apex_indices:
-            corner_id += 1
-        tel.loc[tel.index[i], "Corner"] = corner_id
+        # 2) ENTRY detection: scan backwards until speed increases
+        entry = max(0, apex - window)
+        while entry > 1 and speed.iloc[entry] <= speed.iloc[entry - 1]:
+            entry -= 1
+        entry_dist = df["Distance"].iloc[entry]
 
-    return tel
+        # 3) EXIT detection: scan forward until speed increases consistently
+        exit = min(len(df) - 1, apex + window)
+        while exit < len(df) - 2 and speed.iloc[exit] <= speed.iloc[exit + 1]:
+            exit += 1
+        exit_dist = df["Distance"].iloc[exit]
+
+        # Save segment
+        segments.append((entry_dist, apex_dist, exit_dist))
+
+        corner_id += 1
+
+    # Assign Corner ID to telemetry
+    df["Corner"] = 0
+    cid = 1
+
+    for entry, apex, exit in segments:
+        mask = (df["Distance"] >= entry) & (df["Distance"] <= exit)
+        df.loc[mask, "Corner"] = cid
+        cid += 1
+
+    # Remove non-corner (=0)
+    df = df[df["Corner"] > 0].copy()
+
+    return df
 
 
 
