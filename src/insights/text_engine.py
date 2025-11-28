@@ -84,3 +84,23 @@ def generate_corner_text_insights(df: pd.DataFrame, driver_a: str, driver_b: str
         insights.append(line.strip())
 
     return insights
+def add_time_loss_to_text(df: pd.DataFrame, driver_a: str, driver_b: str):
+    """
+    Adds time loss information to the text insights.
+    """
+    texts = []
+
+    for _, row in df.iterrows():
+        c = int(row["Corner"])
+        loss = row["TimeLoss"]
+
+        if loss < -0.01:
+            text = f"In Corner {c}, {driver_a} loses ~{abs(loss):.2f}s to {driver_b}."
+        elif loss > 0.01:
+            text = f"In Corner {c}, {driver_b} loses ~{abs(loss):.2f}s to {driver_a}."
+        else:
+            text = f"Corner {c}: No meaningful time difference."
+        
+        texts.append(text)
+
+    return texts
