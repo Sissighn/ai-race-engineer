@@ -34,3 +34,20 @@ def compare_drivers(session, driver_a, driver_b):
     merged["Delta_ThrottleBelow30"] = merged[f"ThrottleBelow30Pct_{driver_a}"] - merged[f"ThrottleBelow30Pct_{driver_b}"]
 
     return merged
+
+
+import pandas as pd
+
+def sync_telemetry(tel1, tel2):
+    """
+    Synchronizes two telemetry datasets on the 'Distance' column.
+    Returns a DataFrame with matched speeds and timestamps.
+    """
+    merged = pd.merge_asof(
+        tel1.sort_values("Distance"),
+        tel2.sort_values("Distance"),
+        on="Distance",
+        direction="nearest",
+        suffixes=("_1", "_2")
+    )
+    return merged

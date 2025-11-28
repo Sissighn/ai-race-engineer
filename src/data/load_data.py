@@ -24,7 +24,7 @@ def load_session(year: int, grand_prix: str, session_type: str):
 
 
 def load_telemetry(session, driver_code: str):
-    laps = session.laps.pick_driver(driver_code)
+    laps = session.laps.pick_drivers(driver_code)
     fastest = laps.pick_fastest()
     tel = fastest.get_car_data().add_distance()
     return tel
