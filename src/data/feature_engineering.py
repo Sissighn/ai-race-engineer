@@ -1,31 +1,42 @@
 import pandas as pd
 import numpy as np
+from scipy.signal import find_peaks
 
 
 # ----------------------------------------------------------
 # 1. Corner Segmentation
 # ----------------------------------------------------------
 
-def segment_corners(tel, distance_threshold=40):
+def segment_corners(tel, min_separation=30):
     """
-    Splits lap into corner segments by detecting distance resets.
-    Works reliably for FastF1 telemetry.
-    Adds a 'Corner' column to the dataframe.
+    Segment corners based on local speed minima (apex detection).
+    - Uses the smoothed speed signal
+    - Finds minima (turn apexes) by detecting peaks in -Speed
+    - Adds a Corner column to the telemetry
     """
+
     tel = tel.copy()
+
+    # Use smoothed speed if exists
+    speed = tel["Speed_smooth"] if "Speed_smooth" in tel.columns else tel["Speed"]
+
+    # Detect minima by finding peaks in -speed
+    inverted = -speed
+    minima, _ = find_peaks(inverted, distance=min_separation)
+
+    # Assign corner IDs
     tel["Corner"] = 1
     corner_id = 1
 
-    for i in range(1, len(tel)):
-        delta = tel["Distance"].iloc[i] - tel["Distance"].iloc[i - 1]
+    apex_indices = list(minima)
 
-        # This indicates that FastF1 resets distance → new segment
-        if delta < (-distance_threshold):
+    for i in range(len(tel)):
+        if i in apex_indices:
             corner_id += 1
-
         tel.loc[tel.index[i], "Corner"] = corner_id
 
     return tel
+
 
 
 # ----------------------------------------------------------

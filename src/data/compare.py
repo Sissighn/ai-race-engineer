@@ -1,0 +1,36 @@
+import pandas as pd
+from src.data.load_data import load_telemetry
+from src.data.preprocess import preprocess_telemetry
+from src.data.feature_engineering import build_features
+
+
+def load_and_process_driver(session, driver_code):
+    """Loads telemetry for a driver and runs full preprocessing + feature engineering."""
+    tel = load_telemetry(session, driver_code)
+    tel_clean = preprocess_telemetry(tel)
+    features = build_features(tel_clean)
+    features["Driver"] = driver_code
+    return features
+
+
+def compare_drivers(session, driver_a, driver_b):
+    """
+    Compares two drivers on corner-level metrics.
+    Returns a merged dataframe:
+    - Entry/Apex/Exit Speed
+    - SpeedLoss/SpeedGain
+    - Brake/Throttle behavior
+    - Delta between drivers
+    """
+
+    fa = load_and_process_driver(session, driver_a)
+    fb = load_and_process_driver(session, driver_b)
+
+    merged = fa.merge(fb, on="Corner", suffixes=(f"_{driver_a}", f"_{driver_b}"))
+
+    # Create deltas between Driver A (target) and B
+    merged["Delta_ApexSpeed"] = merged[f"ApexSpeed_{driver_a}"] - merged[f"ApexSpeed_{driver_b}"]
+    merged["Delta_ExitSpeed"] = merged[f"ExitSpeed_{driver_a}"] - merged[f"ExitSpeed_{driver_b}"]
+    merged["Delta_ThrottleBelow30"] = merged[f"ThrottleBelow30Pct_{driver_a}"] - merged[f"ThrottleBelow30Pct_{driver_b}"]
+
+    return merged
