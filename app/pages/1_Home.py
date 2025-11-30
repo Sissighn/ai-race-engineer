@@ -51,10 +51,9 @@ st.markdown("""
 
 @import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap');
 
-html, body, [class*="block-container"], p, td, th {
-    background-color: #101010 !important;
+html, body, [class*="block-container"] {
+    background-color: #191919 !important;
     color: #FFFFFF !important;
-    font-family: 'Playfair', serif !important;
     font-optical-sizing: auto;
 }
 
@@ -95,7 +94,7 @@ html, body, [class*="block-container"], p, td, th {
 
 .card-title {
     font-size: 0.8rem;
-    color: #D30000;
+    color: #8e1f1f;
     font-weight: 600;
     margin-bottom: 5px;
     font-family: 'Playfair', serif !important;
@@ -140,7 +139,7 @@ table th {
     background: #161616 !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
-    border-bottom: 2px solid #D30000 !important;
+    border-bottom: 2px solid #7d0e0e !important;
     text-align: left !important;
     padding: 10px 8px !important;
     font-family: 'Tektur', sans-serif !important;
@@ -167,18 +166,17 @@ table tr:hover td {
 
 /* Button styling */
 .stButton > button {
-    background-color: #D30000 !important;
+    background-color: #7d0e0e !important;
     color: #FFFFFF !important;
     border: none !important;
-    border-radius: 8px !important;
+    border-radius: px !important;
     padding: 10px 24px !important;
     font-weight: 600 !important;
     transition: all 0.3s ease !important;
-    font-family: inherit !important;
 }
 
 .stButton > button:hover {
-    background-color: #FF0000 !important;
+    background-color: #8e1f1f !important;
     box-shadow: 0px 0px 15px rgba(211, 0, 0, 0.4) !important;
 }
 

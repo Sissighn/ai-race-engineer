@@ -63,7 +63,7 @@ navbar()
 
 
 # -------------------------------------------------------
-# DARK THEME GLOBAL CSS (F1 STYLE)
+# DARK THEME GLOBAL CSS
 # -------------------------------------------------------
 st.markdown("""
 <style>
@@ -71,7 +71,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap');
 
 html, body, [class*="block-container"] {
-    background-color: #101010 !important;
+    background-color: #191919 !important;
     color: #FFFFFF !important;
     font-family: 'Playfair', serif;
     font-optical-sizing: auto;
@@ -108,7 +108,7 @@ h1, h2, h3 {
 
 .card-title {
     font-size: 0.8rem;
-    color: #D30000;
+    color: #8e1f1f;
     font-weight: 600;
     margin-bottom: 5px;
 }
@@ -128,7 +128,7 @@ h1, h2, h3 {
 
 /* Button styling */
 .stButton > button {
-    background-color: #D30000 !important;
+    background-color: #7d0e0e !important;
     color: #FFFFFF !important;
     border: none !important;
     border-radius: 8px !important;
@@ -138,7 +138,7 @@ h1, h2, h3 {
 }
 
 .stButton > button:hover {
-    background-color: #FF0000 !important;
+    background-color: #8e1f1f !important;
     box-shadow: 0px 0px 15px rgba(211, 0, 0, 0.4) !important;
 }
 
@@ -156,8 +156,8 @@ h1, h2, h3 {
 }
 
 .stTabs [aria-selected="true"] {
-    color: #D30000 !important;
-    border-bottom: 3px solid #D30000 !important;
+    color: #8e1f1f !important;
+    border-bottom: 3px solid #8e1f1f !important;
 }
 
 /* Dataframe styling */
