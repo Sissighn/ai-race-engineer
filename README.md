@@ -5,11 +5,9 @@
 ![FastF1](https://img.shields.io/badge/Data-FastF1-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Project Overview
-
 AI Race Engineer is a specialized telemetry analysis platform designed to simulate the workflow of a Formula 1 performance engineer. This application bridges the gap between raw data acquisition and actionable motorsport insights by leveraging the FastF1 API.
 
-The project was developed as a comprehensive portfolio piece within the scope of a Business Informatics degree, demonstrating proficiency in data science, software architecture, and full-stack Python development. It emphasizes modular design, separation of concerns, and high-performance data caching.
+---
 
 ## Features
 
@@ -27,13 +25,15 @@ The project was developed as a comprehensive portfolio piece within the scope of
 ### 3. Session Management & UI
 
 - **Live Data Integration:** Real-time countdowns and result fetching for active Grand Prix sessions.
-- **Custom Design System:** Implementation of a bespoke dark theme using external CSS injection to ensure optimal readability in low-light environments.
+- **Custom Design System:** Implementation of a bespoke dark theme using external CSS injection.
+
+---
 
 ## Tech Stack
 
 ### Core Languages & Frameworks
 
-- **Core:** Python 3.9+
+- **Core:** Python 3.11+
 - **Frontend/App Framework:** Streamlit (used for rapid application development and deployment)
 - **Styling:** Custom CSS (Externalized for clean code, combined with the Streamlit theming system)
 
@@ -48,11 +48,13 @@ The project was developed as a comprehensive portfolio piece within the scope of
 - **Visualization:** Plotly Express / Graph Objects (Used for creating interactive, dynamic, and publication-ready charts like speed traces and bar charts)
 - **Code Quality:** Black (Python Code Formatter)
 
-## System Architecture
+---
+
+## Project Structure
 
 The project follows a strict separation of concerns, isolating business logic, data retrieval, and user interface components.
 
-```text
+```bash
 AI-RACE-ENGINEER/
 ├── .streamlit/          # Server configuration (Global Theme & Sidebar settings)
 │   └── config.toml
@@ -74,6 +76,8 @@ AI-RACE-ENGINEER/
 └── README.md            # Project documentation
 ```
 
+---
+
 ## Technical Highlights
 
 - Modular Architecture: The codebase is split into app/ (Presentation Layer) and src/ (Logic Layer), ensuring that UI changes do not affect data processing algorithms.
@@ -88,12 +92,16 @@ AI-RACE-ENGINEER/
 
 * Externalized CSS styling to maintain readable Python code.
 
-## Installation and Usage
+---
 
-- **Prerequisites**
+## Installation
 
-* Python 3.9 or higher
-* pip (Python Package Installer)
+Prerequisites:
+
+- Python 3.11 or higher
+- pip (Python Package Installer)
+
+---
 
 1. Clone the repository
 
@@ -101,6 +109,8 @@ AI-RACE-ENGINEER/
 git clone [https://github.com/Sissighn/ai-race-engineer.git](https://github.com/Sissighn/ai-race-engineer.git)
 cd ai-race-engineer
 ```
+
+---
 
 2. Set up the environment
    It is recommended to use a virtual environment.
@@ -113,11 +123,15 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
+---
+
 3. Install dependencies
 
 ```Bash
 pip install -r requirements.txt
 ```
+
+---
 
 4. Run the application
    Execute the main entry point from the root directory:
@@ -126,13 +140,18 @@ pip install -r requirements.txt
 streamlit run app/main.py
 ```
 
+---
+
 ## Future Roadmap
 
 - Tyre Degradation Model: Implementation of lap time drop-off analysis to predict optimal pit windows.
 - Race Strategy Simulation: Monte Carlo simulation for strategic decision-making.
 - Weather Integration: Layering track temperature and wind data onto performance metrics.
 
+---
+
 ## License
 
 MIT License © 2025 Setayesh Golshan
+
 This project is unofficial and not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.
