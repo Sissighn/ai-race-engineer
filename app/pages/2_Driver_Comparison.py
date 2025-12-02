@@ -33,7 +33,8 @@ from src.data.load_data import (
 from src.data.compare import compare_drivers_corner_level
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
 from src.insights.coaching_engine import coaching_suggestions
-
+from src.data.compare import sync_telemetry
+from app.components.advanced_plots.plot_delta_lap import compute_delta_lap, plot_delta_lap
 
 # -------------------------------------------------------
 # UTILS — RESET CACHE
@@ -429,3 +430,28 @@ if st.session_state.get("compare_result"):
         else:
             for s in suggestions:
                 st.markdown(f"- {s}")
+
+    st.markdown("<h3>Delta Lap Overlay</h3>", unsafe_allow_html=True)
+
+    try:
+        # sync telemetry
+        tel_sync = sync_telemetry(telA, telB)
+
+        # convert synced dataframe into two clean DFs
+        dfA = tel_sync.rename(columns={
+            "Speed_1": "Speed_A",
+            "Time_1": "Time_A"
+        })[["Distance", "Speed_A", "Time_A"]]
+
+        dfB = tel_sync.rename(columns={
+            "Speed_2": "Speed_B",
+            "Time_2": "Time_B"
+        })[["Distance", "Speed_B", "Time_B"]]
+
+        delta_df = compute_delta_lap(dfA, dfB)
+
+        plot_delta_lap(delta_df, driverA, driverB)
+
+    except Exception as e:
+        st.error(f"Delta lap could not be computed: {e}")
+            

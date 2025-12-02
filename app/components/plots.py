@@ -2,10 +2,32 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+# -------------------------------------------------------
+# GLOBAL DARK THEME
+# -------------------------------------------------------
+DARK_BG = "#141414"
+DARK_PAPER = "#191919"
+TEXT_COLOR = "#FFFFFF"
+
 PASTEL_COLORS = [
     "#A48FFF", "#FFB7D5", "#8FD3FE", 
     "#FFDD94", "#C9F7C5", "#FDCFE8"
 ]
+
+def dark_layout(fig, title=None):
+    fig.update_layout(
+        template="plotly_dark",
+        plot_bgcolor=DARK_BG,
+        paper_bgcolor=DARK_PAPER,
+        font_color=TEXT_COLOR,
+        title_font=dict(size=22, color=TEXT_COLOR),
+        hovermode="x unified",
+        margin=dict(l=40, r=40, t=60, b=40),
+    )
+    if title:
+        fig.update_layout(title=title)
+    return fig
+
 
 # -------------------------------------------------------
 # 1) TIME LOSS BAR CHART
@@ -15,27 +37,21 @@ def plot_time_loss_bar(df):
         df,
         x="Corner",
         y="TimeLoss",
-        title="Time Loss per Corner",
         color="TimeLoss",
         color_continuous_scale=px.colors.sequential.Purples,
         height=380
     )
 
-    fig.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font=dict(size=22),
-        xaxis_title="Corner",
-        yaxis_title="Time Loss (s)"
-    )
-
+    fig = dark_layout(fig, "Time Loss per Corner")
     fig.update_traces(marker_line_width=0)
+    fig.update_xaxes(title_text="Corner")
+    fig.update_yaxes(title_text="Time Loss (s)")
 
     st.plotly_chart(fig, use_container_width=True)
 
 
 # -------------------------------------------------------
-# 2) SPEED DELTAS (Apex & Exit)
+# 2) SPEED DELTAS – APEX & EXIT
 # -------------------------------------------------------
 def plot_speed_deltas(df, driver_a, driver_b):
 
@@ -55,24 +71,18 @@ def plot_speed_deltas(df, driver_a, driver_b):
         marker_color="#8FD3FE"
     ))
 
-    fig.update_layout(
-        barmode="group",
-        title=f"Speed Deltas – {driver_a} vs {driver_b}",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        title_font=dict(size=22),
-        xaxis_title="Corner",
-        yaxis_title="Speed Delta (km/h)",
-        legend=dict(borderwidth=0)
-    )
+    fig = dark_layout(fig, f"Speed Deltas – {driver_a} vs {driver_b}")
+    fig.update_xaxes(title_text="Corner")
+    fig.update_yaxes(title_text="Speed Delta (km/h)")
 
     st.plotly_chart(fig, use_container_width=True)
 
 
 # -------------------------------------------------------
-# 3) SPEED PROFILE LINE PLOT (lap overlay)
+# 3) SPEED PROFILE – LINE PLOT
 # -------------------------------------------------------
 def plot_speed_profile(telA, telB, driverA, driverB):
+
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
@@ -91,37 +101,27 @@ def plot_speed_profile(telA, telB, driverA, driverB):
         line=dict(color="#FFB7D5", width=2)
     ))
 
-    fig.update_layout(
-        title=f"Speed Profile – {driverA} vs {driverB}",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        xaxis_title="Distance (m)",
-        yaxis_title="Speed (km/h)"
-    )
+    fig = dark_layout(fig, f"Speed Profile – {driverA} vs {driverB}")
+    fig.update_xaxes(title_text="Distance (m)")
+    fig.update_yaxes(title_text="Speed (km/h)")
 
     st.plotly_chart(fig, use_container_width=True)
 
 
 # -------------------------------------------------------
-# 4) BRAKE & THROTTLE COMPARISON
+# 4) BRAKE & THROTTLE INPUTS
 # -------------------------------------------------------
 def plot_brake_throttle(telA, telB, driverA, driverB):
+
     fig = go.Figure()
 
+    # --- Driver A ---
     fig.add_trace(go.Scatter(
         x=telA["Distance"],
         y=telA["Brake"],
         name=f"{driverA} Brake",
         mode="lines",
         line=dict(color="#A48FFF", width=2)
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=telB["Distance"],
-        y=telB["Brake"],
-        name=f"{driverB} Brake",
-        mode="lines",
-        line=dict(color="#FFB7D5", width=2)
     ))
 
     fig.add_trace(go.Scatter(
@@ -132,6 +132,15 @@ def plot_brake_throttle(telA, telB, driverA, driverB):
         line=dict(color="#8FD3FE", width=2)
     ))
 
+    # --- Driver B ---
+    fig.add_trace(go.Scatter(
+        x=telB["Distance"],
+        y=telB["Brake"],
+        name=f"{driverB} Brake",
+        mode="lines",
+        line=dict(color="#FFB7D5", width=2)
+    ))
+
     fig.add_trace(go.Scatter(
         x=telB["Distance"],
         y=telB["Throttle"],
@@ -140,18 +149,15 @@ def plot_brake_throttle(telA, telB, driverA, driverB):
         line=dict(color="#FFDD94", width=2)
     ))
 
-    fig.update_layout(
-        title=f"Brake / Throttle Input – {driverA} vs {driverB}",
-        xaxis_title="Distance (m)",
-        yaxis_title="Input Value",
-        plot_bgcolor="white"
-    )
+    fig = dark_layout(fig, f"Brake & Throttle – {driverA} vs {driverB}")
+    fig.update_xaxes(title_text="Distance (m)")
+    fig.update_yaxes(title_text="Input (%)")
 
     st.plotly_chart(fig, use_container_width=True)
 
 
 # -------------------------------------------------------
-# 5) GEAR USAGE (donut / pie)
+# 5) GEAR USAGE – DONUT
 # -------------------------------------------------------
 def plot_gear_usage(tel, driver):
     gear_counts = tel["nGear"].value_counts().sort_index()
@@ -159,23 +165,27 @@ def plot_gear_usage(tel, driver):
     fig = px.pie(
         values=gear_counts.values,
         names=gear_counts.index,
-        hole=0.5,
+        hole=0.55,
         title=f"Gear Usage – {driver}",
         color_discrete_sequence=PASTEL_COLORS
     )
 
-    fig.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white"
-    )
-
+    fig = dark_layout(fig)
     st.plotly_chart(fig, use_container_width=True)
 
 
 # -------------------------------------------------------
-# 6) APEX SPEED DONUT (where driver loses most)
+# 6) APEX SPEED DISTRIBUTION – DONUT
 # -------------------------------------------------------
 def plot_apex_speed_share(df):
+
+    # Defensive: If empty
+    if "Delta_ApexSpeed" not in df.columns:
+        fig = px.pie(values=[1], names=["No data"], hole=0.55)
+        fig = dark_layout(fig, "Apex Speed Distribution (No Data)")
+        st.plotly_chart(fig, use_container_width=True)
+        return
+
     fig = px.pie(
         df,
         values="Delta_ApexSpeed",
@@ -185,4 +195,5 @@ def plot_apex_speed_share(df):
         color_discrete_sequence=PASTEL_COLORS
     )
 
+    fig = dark_layout(fig)
     st.plotly_chart(fig, use_container_width=True)

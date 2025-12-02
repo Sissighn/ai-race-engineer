@@ -3,7 +3,6 @@ from src.data.load_data import load_telemetry
 from src.data.preprocess import preprocess_telemetry
 from src.data.feature_engineering import build_features
 
-
 def load_and_process_driver(session, driver_code):
     """Loads telemetry for a driver and runs full preprocessing + feature engineering."""
     tel = load_telemetry(session, driver_code)
@@ -35,8 +34,6 @@ def compare_drivers(session, driver_a, driver_b):
 
     return merged
 
-
-import pandas as pd
 
 def sync_telemetry(tel1, tel2):
     """
@@ -96,3 +93,9 @@ def compare_drivers_corner_level(session, driver_a: str, driver_b: str) -> pd.Da
 
     return merged
 
+__all__ = [
+    "compare_drivers",
+    "compare_drivers_corner_level",
+    "sync_telemetry",
+    "load_and_process_driver"
+]

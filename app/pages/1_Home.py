@@ -3,6 +3,8 @@ import pandas as pd
 import sys
 import os
 import re
+import fastf1
+
 
 @st.cache_resource
 def load_event_results(year, event_key):
@@ -252,18 +254,47 @@ def render_f1_table(df, title):
 # ------------------------------------
 # Load Latest Event
 # ------------------------------------
-sessions = get_latest_sessions()
+session_data = get_latest_sessions()
 
-event_long = sessions["EventName"].iloc[0]
-location = sessions["Location"].iloc[0]
-country = sessions["Country"].iloc[0]
-event_date = sessions["EventDate"].iloc[0]
+# Get events DataFrame
+events_df = session_data["events"]
+latest_completed_idx = session_data["latest_completed_index"]
+
+# Get next session info
+next_session_name = session_data["next_session_name"]
+next_session_time = session_data["next_session_time"]
+
+# Determine which event to display for Location/Date
+# If next session exists and is in the future, show that event's location
+# Otherwise show latest completed event
+now = pd.Timestamp.now(tz="UTC")
+
+if pd.notna(next_session_time) and next_session_time > now:
+    # Find which event the next session belongs to
+    display_event = None
+    for idx, event in events_df.iterrows():
+        session_cols = ["Session1DateUtc", "Session2DateUtc", "Session3DateUtc", 
+                       "Session4DateUtc", "Session5DateUtc"]
+        for col in session_cols:
+            if pd.notna(event.get(col)) and event[col] == next_session_time:
+                display_event = event
+                break
+        if display_event is not None:
+            break
+    
+    # Fallback to latest completed if not found
+    if display_event is None:
+        display_event = events_df.iloc[latest_completed_idx]
+else:
+    # No upcoming session, show latest completed
+    display_event = events_df.iloc[latest_completed_idx]
+
+event_long = display_event["EventName"]
+location = display_event["Location"]
+country = display_event["Country"]
+event_date = display_event["EventDate"]
 season_year = int(str(event_date)[:4])
-event_key = sessions["OfficialEventName"].iloc[0]
-
-next_session_name = sessions["NextSession"].iloc[0]
-next_session_time = sessions["NextSessionDate"].iloc[0]
-
+event_key = display_event["OfficialEventName"]
 
 # ------------------------------------
 # TOP SECTION
@@ -294,27 +325,94 @@ with col2:
         </div>
     """, unsafe_allow_html=True)
 
-
 # ------------------------------------
-# RESULTS SECTION
+# RESULTS SECTION WITH NAVIGATION
 # ------------------------------------
-st.markdown("<h2 class='section-title'>Current Event Results</h2>", unsafe_allow_html=True)
 
-results = load_event_results(season_year, event_key)
+# Initialize session state for event navigation
+if "event_index" not in st.session_state:
+    st.session_state.event_index = 0
 
-# Pair tables: Sprint + Sprint Quali, then Quali + Race
-pairs = [
-    ("S", "Sprint", "SQ", "Sprint Qualifying"),
-    ("Q", "Qualifying", "R", "Race")
-]
+# Get all events for the season
+all_events = fastf1.get_event_schedule(season_year)
+now = pd.Timestamp.now(tz="UTC")
 
-for left_key, left_title, right_key, right_title in pairs:
-    colA, colB = st.columns([1, 1], gap="medium")
+# Normalize dates
+for col in ["Session1DateUtc", "Session2DateUtc", "Session3DateUtc", 
+            "Session4DateUtc", "Session5DateUtc"]:
+    if col in all_events.columns:
+        all_events[col] = pd.to_datetime(all_events[col], utc=True)
 
-    with colA:
-        st.markdown(render_f1_table(results.get(left_key), left_title), unsafe_allow_html=True)
-    with colB:
-        st.markdown(render_f1_table(results.get(right_key), right_title), unsafe_allow_html=True)
+# Filter to events that have started (at least FP1 happened)
+started_events = []
+for idx, event in all_events.iterrows():
+    if pd.notna(event.get("Session1DateUtc")) and event["Session1DateUtc"] < now:
+        started_events.append(event)
+
+if not started_events:
+    st.warning("No events have started yet this season.")
+else:
+    # Find the latest completed event (default)
+    latest_completed_idx = 0
+    for i, event in enumerate(started_events):
+        # Check if last session is in the past
+        last_session_date = None
+        for col in ["Session5DateUtc", "Session4DateUtc", "Session3DateUtc", 
+                    "Session2DateUtc", "Session1DateUtc"]:
+            if pd.notna(event.get(col)):
+                last_session_date = event[col]
+                break
+        
+        if last_session_date and last_session_date < now:
+            latest_completed_idx = i
+
+    # Set default to latest completed event (only on first load)
+    if "event_index_initialized" not in st.session_state:
+        st.session_state.event_index = latest_completed_idx
+        st.session_state.event_index_initialized = True
+
+    # Clamp index to valid range
+    st.session_state.event_index = max(0, min(st.session_state.event_index, len(started_events) - 1))
+
+    # Get current event to display
+    current_display_event = started_events[st.session_state.event_index]
+    display_event_name = current_display_event["EventName"]
+    display_event_key = current_display_event["OfficialEventName"]
+
+    # Navigation buttons
+    st.markdown("<h2 class='section-title' style='text-align: center;'>Current Event Results</h2>", unsafe_allow_html=True)
+    
+    col_nav1, col_nav2, col_nav3 = st.columns([1, 3, 1])
+    
+    with col_nav1:
+        if st.button("←", key="prev_event", disabled=(st.session_state.event_index <= 0)):
+            st.session_state.event_index -= 1
+            st.rerun()
+    
+    with col_nav2:
+        st.markdown(f"<h3 style='text-align: center;'>‹ {display_event_name} Results ›</h3>", unsafe_allow_html=True)
+    
+    with col_nav3:
+        if st.button("→", key="next_event", disabled=(st.session_state.event_index >= len(started_events) - 1)):
+            st.session_state.event_index += 1
+            st.rerun()
+
+    # Load results for selected event
+    display_results = load_event_results(season_year, display_event_key)
+
+    # Pair tables: Sprint + Sprint Quali, then Quali + Race
+    pairs = [
+        ("S", "Sprint", "SQ", "Sprint Qualifying"),
+        ("Q", "Qualifying", "R", "Race")
+    ]
+
+    for left_key, left_title, right_key, right_title in pairs:
+        colA, colB = st.columns([1, 1], gap="medium")
+
+        with colA:
+            st.markdown(render_f1_table(display_results.get(left_key), left_title), unsafe_allow_html=True)
+        with colB:
+            st.markdown(render_f1_table(display_results.get(right_key), right_title), unsafe_allow_html=True)
 
 # ------------------------------------
 # COUNTDOWN SECTION

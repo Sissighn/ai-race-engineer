@@ -1,4 +1,5 @@
 # app/components/track_map.py
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,44 +9,48 @@ import streamlit as st
 
 from src.data.load_data import load_telemetry_with_position
 
+# ---------------------------------------------------------
+# GLOBAL DARK THEME COLORS
+# ---------------------------------------------------------
+DARK_BG = "#141414"
+DARK_PAPER = "#191919"
+TEXT_COLOR = "#FFFFFF"
 
 # ---------------------------------------------------------
-# 1. Pastel Colormap
+# Pastel Neon Speed Colormap (matching your plotly theme)
 # ---------------------------------------------------------
-def _pastel_speed_cmap():
-    """Soft pastel color map for clean speed visualization."""
+def _dark_pastel_speed_cmap():
     colors = [
-        (0.85, 0.90, 1.00),   # light blue
-        (0.80, 0.75, 1.00),   # lavender
-        (0.95, 0.80, 0.95),   # soft pink
-        (1.00, 0.90, 0.75),   # pastel peach
+        (0.75, 0.82, 1.00),   # neon-light blue
+        (0.80, 0.70, 1.00),   # neon lavender
+        (0.95, 0.75, 0.95),   # soft pink
+        (1.00, 0.88, 0.60),   # pastel peach
     ]
-    return LinearSegmentedColormap.from_list("pastel_speed", colors)
+    return LinearSegmentedColormap.from_list("dark_pastel_speed", colors)
 
 
 # ---------------------------------------------------------
-# 2. Draw heat-colored line
+# 1. Dark mode line heatmap
 # ---------------------------------------------------------
-def _line_heatmap(x, y, values, ax, fig):
-    """
-    Draws line segments colored by telemetry values.
-    """
-
+def _line_heatmap_dark(x, y, values, ax, fig):
     x = np.asarray(x)
     y = np.asarray(y)
     values = np.asarray(values)
 
-    if len(x) < 2 or len(values) < 2:
-        raise ValueError("Telemetry too short to draw track map.")
+    if len(x) < 2:
+        raise ValueError("Telemetry too short for track map.")
 
     points = np.column_stack((x, y))
     segments = np.stack([points[:-1], points[1:]], axis=1)
 
     norm = plt.Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
-    cmap = _pastel_speed_cmap()
+    cmap = _dark_pastel_speed_cmap()
 
     lc = LineCollection(
-        segments, cmap=cmap, norm=norm, linewidth=4.0
+        segments,
+        cmap=cmap,
+        norm=norm,
+        linewidth=3.2
     )
     lc.set_array(values)
 
@@ -54,15 +59,20 @@ def _line_heatmap(x, y, values, ax, fig):
     ax.autoscale()
     ax.axis("off")
 
-    # Add colorbar
-    cbar = fig.colorbar(lc, ax=ax, fraction=0.04, pad=0.03)
-    cbar.set_label("Speed (km/h)", fontsize=9)
+    # Colorbar
+    cbar = fig.colorbar(lc, ax=ax, fraction=0.045, pad=0.02)
+    cbar.set_label("Speed (km/h)", fontsize=8, color=TEXT_COLOR)
+
+    # Colorbar dark styling
+    cbar.outline.set_edgecolor(TEXT_COLOR)
+    cbar.ax.yaxis.set_tick_params(color=TEXT_COLOR)
+    plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), color=TEXT_COLOR)
 
     return lc
 
 
 # ---------------------------------------------------------
-# 3. Display static SVG outline (optional)
+# 2. Optional SVG Outline
 # ---------------------------------------------------------
 def show_track_outline_svg(track: str):
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -75,17 +85,11 @@ def show_track_outline_svg(track: str):
 
 
 # ---------------------------------------------------------
-# 4. Main function — Track Map
+# 3. MAIN FUNCTION — Track Map (Dark Mode)
 # ---------------------------------------------------------
 def plot_track_map(session, driver_code: str, track: str, mode="speed"):
-    """
-    Plots a heat-colored track map for the driver's fastest lap.
-    """
-
-    # Load telemetry with X/Y and speed
     tel = load_telemetry_with_position(session, driver_code)
 
-    # Validate required data
     for col in ["X", "Y", "Speed"]:
         if col not in tel.columns:
             st.error(f"Telemetry missing '{col}' for track map.")
@@ -96,23 +100,31 @@ def plot_track_map(session, driver_code: str, track: str, mode="speed"):
 
     if mode.lower() == "speed":
         values = tel["Speed"].values
-        label = "Speed (km/h)"
     else:
-        st.warning(f"Mode '{mode}' not implemented. Falling back to speed.")
         values = tel["Speed"].values
-        label = "Speed (km/h)"
+        st.warning(f"Mode '{mode}' not implemented. Using Speed instead.")
 
-    # Drawing figure
-    fig, ax = plt.subplots(figsize=(2.4, 2.4), dpi=300)
+    # --------------- FIGURE ------------------
+    fig, ax = plt.subplots(figsize=(2.5, 2.5), dpi=260)
+
+    # DARK BACKGROUND for the whole map
+    fig.patch.set_facecolor(DARK_PAPER)
+    ax.set_facecolor(DARK_PAPER)
 
     try:
-        _line_heatmap(x, y, values, ax, fig)
+        _line_heatmap_dark(x, y, values, ax, fig)
     except Exception as e:
         st.error(f"Track map draw error: {e}")
         plt.close(fig)
         return
 
-    ax.set_title(f"{track} – {driver_code}", fontsize=10, pad=6)
+    # Dark title
+    ax.set_title(
+        f"{track} – {driver_code}",
+        fontsize=10,
+        pad=6,
+        color=TEXT_COLOR
+    )
 
     st.pyplot(fig)
     plt.close(fig)
