@@ -20,6 +20,32 @@ header[data-testid="stHeader"] {
 [data-testid="stSidebar"] {
         display: none !important;
     }
+               
+/* ------------------------------------
+       SOFT PAGE TRANSITION ANIMATION
+    ------------------------------------ */
+    
+    @keyframes fadeInAnimation {
+        0% {
+            opacity: 0;
+            transform: translateY(10px); /* Optional: Leicht von unten einschweben */
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stApp > header + div {
+        animation-name: fadeInAnimation;
+        animation-duration: 0.5s;  /* Dauer: 0.5 Sekunden */
+        animation-timing-function: ease-in-out;
+        animation-fill-mode: both;
+    }
+    
+    div.block-container {
+        animation: fadeInAnimation 0.5s ease-in-out;
+    }
 
                
 /* ------------------------------------
