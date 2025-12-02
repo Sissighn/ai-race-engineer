@@ -382,7 +382,7 @@ else:
     # Navigation buttons
     st.markdown("<h2 class='section-title' style='text-align: center;'>Current Event Results</h2>", unsafe_allow_html=True)
     
-    col_nav1, col_nav2, col_nav3 = st.columns([1, 3, 1])
+    col_nav1, col_nav2, col_nav3 = st.columns([4, 12, 4])
     
     with col_nav1:
         if st.button("←", key="prev_event", disabled=(st.session_state.event_index <= 0)):
@@ -440,11 +440,16 @@ def render_countdown():
         countdown_text = "Session in progress"
     else:
         total = int(delta.total_seconds())
+
+        days = total // 86400
         hrs = total // 3600
         mins = (total % 3600) // 60
         secs = total % 60
-        countdown_text = f"{hrs:02d}h {mins:02d}m {secs:02d}s"
-
+        if days > 0:
+            countdown_text = f"{days}d {hrs:02d}h {mins:02d}m {secs:02d}s"
+        else:
+            countdown_text = f"{hrs:02d}h {mins:02d}m {secs:02d}s"
+            
     countdown_box.markdown(
         f"""
         <div class="card">
