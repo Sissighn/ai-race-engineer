@@ -264,11 +264,11 @@ def render_countdown():
         total = int(delta.total_seconds())
 
         days = total // 86400
-        hrs = total // 3600
+        hrs = (total % 86400) // 3600
         mins = (total % 3600) // 60
         secs = total % 60
         if days > 0:
-            countdown_text = f"{days}d {hrs:02d}h {mins:02d}m {secs:02d}s"
+            countdown_text = f"{days}d {hrs}h {mins:02d}m {secs:02d}s"
         else:
             countdown_text = f"{hrs:02d}h {mins:02d}m {secs:02d}s"
 
