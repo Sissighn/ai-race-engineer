@@ -178,21 +178,23 @@ def plot_gear_usage(tel, driver):
 # 6) APEX SPEED DISTRIBUTION – DONUT
 # -------------------------------------------------------
 def plot_apex_speed_share(df):
+    if df is None or df.empty: return
 
-    # Defensive: If empty
-    if "Delta_ApexSpeed" not in df.columns:
-        fig = px.pie(values=[1], names=["No data"], hole=0.55)
-        fig = dark_layout(fig, "Apex Speed Distribution (No Data)")
-        st.plotly_chart(fig, use_container_width=True)
-        return
+    plot_df = df.copy()
+    plot_df["Faster_Driver"] = plot_df["Delta_ApexSpeed"].apply(
+        lambda x: "Driver A Faster" if x > 0 else "Driver B Faster"
+    )
+    
+    counts = plot_df["Faster_Driver"].value_counts().reset_index()
+    counts.columns = ["Driver", "Count"]
 
     fig = px.pie(
-        df,
-        values="Delta_ApexSpeed",
-        names="Corner",
+        counts,
+        values="Count",
+        names="Driver",
         hole=0.55,
-        title="Apex Speed Distribution",
-        color_discrete_sequence=PASTEL_COLORS
+        title="Dominance: Who was faster in more corners?",
+        color_discrete_sequence=["#A48FFF", "#FFB7D5"]
     )
 
     fig = dark_layout(fig)
