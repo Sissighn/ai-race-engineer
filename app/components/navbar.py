@@ -46,15 +46,16 @@ def navbar():
         max-height: 60px;
     }
 
-    / Logo + brand wrapper */
+    /* Logo + brand wrapper */
     .navBrandWrapper {
         display: flex;
         align-items: center;
         gap: 12px;
+        flex-direction: row;
     }
 
     .navLogo {
-        height: 70px;
+        height: 45px;
         width: auto;
     }
 
