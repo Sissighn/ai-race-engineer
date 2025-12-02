@@ -30,7 +30,7 @@ def dark_layout(fig, title=None):
 # -------------------------------------------------------
 # 1) TIME LOSS BAR CHART
 # -------------------------------------------------------
-def plot_time_loss_bar(df):
+def plot_time_loss_bar(df, key="time_loss_bar"):
     fig = px.bar(
         df,
         x="Corner",
@@ -45,13 +45,13 @@ def plot_time_loss_bar(df):
     fig.update_xaxes(title_text="Corner")
     fig.update_yaxes(title_text="Time Loss (s)")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 
 # -------------------------------------------------------
 # 2) SPEED DELTAS – APEX & EXIT
 # -------------------------------------------------------
-def plot_speed_deltas(df, driver_a, driver_b):
+def plot_speed_deltas(df, driver_a, driver_b, key="speed_deltas"):
 
     fig = go.Figure()
 
@@ -77,13 +77,13 @@ def plot_speed_deltas(df, driver_a, driver_b):
     fig.update_xaxes(title_text="Corner")
     fig.update_yaxes(title_text="Speed Delta (km/h)")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 
 # -------------------------------------------------------
 # 3) SPEED PROFILE – LINE PLOT
 # -------------------------------------------------------
-def plot_speed_profile(telA, telB, driverA, driverB):
+def plot_speed_profile(telA, telB, driverA, driverB, key="speed_profile"):
 
     fig = go.Figure()
 
@@ -111,13 +111,13 @@ def plot_speed_profile(telA, telB, driverA, driverB):
     fig.update_xaxes(title_text="Distance (m)")
     fig.update_yaxes(title_text="Speed (km/h)")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 
 # -------------------------------------------------------
 # 4) BRAKE & THROTTLE INPUTS
 # -------------------------------------------------------
-def plot_brake_throttle(telA, telB, driverA, driverB):
+def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
 
     fig = go.Figure()
 
@@ -167,13 +167,17 @@ def plot_brake_throttle(telA, telB, driverA, driverB):
     fig.update_xaxes(title_text="Distance (m)")
     fig.update_yaxes(title_text="Input (%)")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 
 # -------------------------------------------------------
 # 5) GEAR USAGE – DONUT
 # -------------------------------------------------------
-def plot_gear_usage(tel, driver):
+def plot_gear_usage(tel, driver, key=None):
+    # Falls key nicht übergeben wurde, generieren wir einen aus dem Fahrernamen
+    if key is None:
+        key = f"gear_usage_{driver}"
+
     gear_counts = tel["nGear"].value_counts().sort_index()
 
     fig = px.pie(
@@ -185,32 +189,94 @@ def plot_gear_usage(tel, driver):
     )
 
     fig = dark_layout(fig)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 
 # -------------------------------------------------------
-# 6) APEX SPEED DISTRIBUTION – DONUT
+# 6) APEX SPEED DISTRIBUTION – DONUT (FIXED)
 # -------------------------------------------------------
-def plot_apex_speed_share(df):
-    if df is None or df.empty:
+def plot_apex_speed_share(df, key="apex_share"):
+    if df is None or df.empty or "Delta_ApexSpeed" not in df.columns:
         return
 
+    # Fix für Pie-Charts (keine negativen Werte)
     plot_df = df.copy()
-    plot_df["Faster_Driver"] = plot_df["Delta_ApexSpeed"].apply(
-        lambda x: "Driver A Faster" if x > 0 else "Driver B Faster"
-    )
-
-    counts = plot_df["Faster_Driver"].value_counts().reset_index()
-    counts.columns = ["Driver", "Count"]
+    plot_df["Absolute_Delta"] = plot_df["Delta_ApexSpeed"].abs()
 
     fig = px.pie(
-        counts,
-        values="Count",
-        names="Driver",
+        plot_df,
+        values="Absolute_Delta",
+        names="Corner",
         hole=0.55,
-        title="Dominance: Who was faster in more corners?",
-        color_discrete_sequence=["#A48FFF", "#FFB7D5"],
+        title="Apex Speed Difference (Magnitude)",
+        hover_data=["Delta_ApexSpeed"],
+        color_discrete_sequence=PASTEL_COLORS,
     )
 
     fig = dark_layout(fig)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=key)
+
+
+# -------------------------------------------------------
+# 7) DRIVER DNA RADAR CHART (MIT KEY FIX)
+# -------------------------------------------------------
+def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
+    """
+    Plots a Radar Chart comparing two drivers' characteristics.
+    """
+    fig = go.Figure()
+
+    # Trace für Driver A
+    fig.add_trace(
+        go.Scatterpolar(
+            r=dna_df[driver_a],
+            theta=dna_df["Metric"],
+            fill="toself",
+            name=driver_a,
+            line=dict(color="#A48FFF", width=2),
+            fillcolor="rgba(164, 143, 255, 0.3)",
+        )
+    )
+
+    # Trace für Driver B
+    fig.add_trace(
+        go.Scatterpolar(
+            r=dna_df[driver_b],
+            theta=dna_df["Metric"],
+            fill="toself",
+            name=driver_b,
+            line=dict(color="#FFB7D5", width=2),
+            fillcolor="rgba(255, 183, 213, 0.3)",
+        )
+    )
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+                gridcolor="#333",
+                linecolor="#333",
+                tickfont=dict(color="#888"),
+            ),
+            angularaxis=dict(
+                gridcolor="#333", linecolor="#333", tickfont=dict(color="#FFF", size=12)
+            ),
+            bgcolor="#141414",
+        ),
+        title=dict(
+            text="<b>Driver DNA Comparison</b>",
+            y=0.95,
+            x=0.5,
+            xanchor="center",
+            yanchor="top",
+            font=dict(size=20, color="#FFF"),
+        ),
+        paper_bgcolor="#191919",
+        font=dict(color="#FFF"),
+        margin=dict(l=40, r=40, t=80, b=40),
+        legend=dict(x=0.8, y=0.95),
+    )
+
+    # Hier übergeben wir den Key an Streamlit!
+    st.plotly_chart(fig, use_container_width=True, key=key)

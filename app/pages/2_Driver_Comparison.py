@@ -35,6 +35,8 @@ from src.data.load_data import load_session, load_telemetry
 from src.data.compare import compare_drivers_corner_level, sync_telemetry
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
 from src.insights.coaching_engine import coaching_suggestions
+from src.insights.driver_dna import compare_driver_dna  # <--- NEU IMPORTIEREN
+from app.components.plots import plot_driver_dna  # <--- NEU IMPORTIEREN
 
 
 # -------------------------------------------------------
@@ -285,3 +287,26 @@ if st.session_state.get("compare_result"):
         plot_delta_lap(delta_df, driverA, driverB)
     except Exception as e:
         st.warning(f"Could not compute Delta Lap: {e}")
+
+    # --- DRIVER DNA ---
+    st.markdown("<h3>Driver Style Analysis (DNA)</h3>", unsafe_allow_html=True)
+
+    try:
+        dna_df = compare_driver_dna(telA, telB, driverA, driverB)
+
+        # Layout: Links Radar Chart, Rechts Time Loss
+        col_dna, col_loss = st.columns([1, 1])
+
+        with col_dna:
+            plot_driver_dna(dna_df, driverA, driverB)
+            st.caption(
+                f"Analysis based on telemetry patterns (Aggressiveness, Smoothness, Input Workload)."
+            )
+
+        with col_loss:
+            # Time Loss Bar Chart hierhin verschieben oder kopieren
+            st.markdown("<b>Time Loss Distribution</b>", unsafe_allow_html=True)
+            plot_time_loss_bar(tl, key="time_loss_bar_dna")
+
+    except Exception as e:
+        st.error(f"Could not calculate Driver DNA: {e}")

@@ -203,7 +203,6 @@ def load_single_session_results(
     try:
         df = session.results.copy()
 
-        # Graceful handling in case some columns are missing
         cols_available = df.columns.tolist()
         keep_cols = [
             c
