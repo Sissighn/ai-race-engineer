@@ -3,7 +3,7 @@ import streamlit as st
 
 def apply_custom_theme():
     st.markdown(
-        """
+        """ /* css */
 <style>
 
 @import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap');
@@ -73,12 +73,6 @@ header[data-testid="stHeader"] {
     font-variation-settings: "wdth" 100 !important;
     font-weight: 700 !important;
 }
-
-/* ------------------------------------
-   TABLE STYLING
-   (Note: The wrapper is now handled by GlowCard classes, 
-    we only style the inner table here)
------------------------------------- */
 
 /* Ensure the table scrolls if too wide */
 .table-responsive {
