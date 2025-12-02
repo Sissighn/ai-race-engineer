@@ -1,0 +1,148 @@
+/* ------------------------------------
+   IMPORTS & GLOBAL FONTS
+------------------------------------ */
+@import url("https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap");
+
+/* Wir wenden Fonts auf .stApp an, das ist der oberste Streamlit Container */
+html,
+body,
+[class*="block-container"],
+.stApp {
+  background-color: #191919 !important;
+  color: #ffffff !important;
+  font-family: "Playfair", serif !important; /* Fallback Font global */
+  font-optical-sizing: auto;
+}
+
+/* ------------------------------------
+   HIDE STREAMLIT UI ELEMENTS
+------------------------------------ */
+header[data-testid="stHeader"] {
+  visibility: hidden !important;
+  height: 0px !important;
+}
+
+[data-testid="stSidebar"] {
+  display: none !important;
+}
+
+/* ------------------------------------
+   HEADINGS (TITLES)
+   Fix: Wir targeten jetzt direkt h1-h6, egal wo sie sind
+------------------------------------ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.stHeading,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 {
+  font-family: "Tektur", sans-serif !important;
+  font-optical-sizing: auto !important;
+  font-variation-settings: "wdth" 100 !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+/* Spezieller Style für deine Section Titles */
+.section-title {
+  font-size: 1.6rem;
+  margin-top: 1.2rem;
+  font-family: "Tektur", sans-serif !important;
+}
+
+/* ------------------------------------
+   BUTTONS (Der Fix für die rote Farbe)
+------------------------------------ */
+/* Normaler Zustand */
+.stButton > button {
+  background-color: #7d0e0e !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important; /* Optional: Macht sie etwas moderner */
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Text im Button (manchmal überschreibt Streamlit das p-Tag darin) */
+.stButton > button p {
+  color: #ffffff !important;
+}
+
+/* Hover Zustand */
+.stButton > button:hover {
+  background-color: #8e1f1f !important;
+  box-shadow: 0px 0px 15px rgba(211, 0, 0, 0.4) !important;
+  color: #ffffff !important;
+  border-color: #8e1f1f !important;
+}
+
+/* Active & Focus (Wenn man klickt - verhindert das "Grau werden") */
+.stButton > button:active,
+.stButton > button:focus {
+  background-color: #600b0b !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ------------------------------------
+   TABLES
+------------------------------------ */
+.table-responsive {
+  overflow-x: auto;
+  width: 100%;
+}
+
+table {
+  width: 100%;
+  min-width: 400px;
+  border-collapse: collapse;
+}
+
+table th {
+  background: #161616 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #7d0e0e !important;
+  text-align: left !important;
+  padding: 10px 8px !important;
+  font-family: "Tektur", sans-serif !important;
+}
+
+table td {
+  background: #141414 !important;
+  padding: 8px 8px !important;
+  border-bottom: 1px solid #222 !important;
+  font-family: "Playfair", serif !important;
+}
+
+table tr:hover td {
+  background: #1e1e1e !important;
+}
+
+/* ------------------------------------
+   ANIMATIONS
+------------------------------------ */
+@keyframes fadeInAnimation {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.block-container {
+  animation-name: fadeInAnimation;
+  animation-duration: 0.95s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+  will-change: transform, opacity;
+}

@@ -14,8 +14,8 @@ if project_root not in sys.path:
 # -------------------------------------------------------
 # IMPORTS
 # -------------------------------------------------------
+from app.utils.ui import load_css
 from app.components.navbar import navbar
-from app.components.styling import apply_custom_theme
 from app.components.glow_card import GlowCard  # <--- NEU: GlowCard importiert
 from app.components.plots import (
     plot_time_loss_bar,
@@ -55,8 +55,7 @@ st.set_page_config(
     layout="wide",
 )
 
-apply_custom_theme()
-
+load_css()
 navbar()
 
 # -------------------------------------------------------

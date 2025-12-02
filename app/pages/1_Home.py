@@ -14,10 +14,10 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import components
+from app.utils.ui import load_css
 from app.components.navbar import navbar
 from app.components.glow_card import GlowCard
 from src.data.latest_session import get_latest_sessions, get_season_results
-from app.components.styling import apply_custom_theme
 from app.components.results_view import render_f1_table
 
 
@@ -46,8 +46,7 @@ header {visibility:hidden;}
     unsafe_allow_html=True,
 )
 
-apply_custom_theme()
-
+load_css()
 navbar()
 st.markdown("<div class='main-content'>", unsafe_allow_html=True)
 
