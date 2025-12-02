@@ -4,7 +4,19 @@ import sys
 import os
 import re
 import fastf1
+import time
 
+# -------------------
+# Load Data Methods
+# -------------------
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Import components
+from app.components.navbar import navbar
+from app.components.glow_card import GlowCard
+from src.data.latest_session import get_latest_sessions, get_season_results
 
 @st.cache_resource
 def load_event_results(year, event_key):
@@ -14,24 +26,11 @@ def load_event_results(year, event_key):
     """
     return get_season_results(year, event_key)
 
-# -------------------
-# Load Data Methods
-# -------------------
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from app.components.navbar import navbar
-from src.data.latest_session import get_latest_sessions, get_season_results
-
 
 # ------------------------------------
 # Streamlit Page Config
 # ------------------------------------
-st.set_page_config(
-    page_title="AI Race Engineer – Home",
-    layout="wide",
-)
+st.set_page_config(page_title="AI Race Engineer – Home", layout="wide")
 
 # Hide Streamlit sidebar
 st.markdown("""
@@ -59,8 +58,9 @@ html, body, [class*="block-container"] {
     font-optical-sizing: auto;
 }
 
-
-/* Section Titles */
+/* ------------------------------------
+   SECTION TITLES
+------------------------------------ */
 .section-title {
     font-size: 1.6rem;
     font-weight: 700;
@@ -82,61 +82,24 @@ html, body, [class*="block-container"] {
     font-weight: 700 !important;
 }
 
+/* ------------------------------------
+   TABLE STYLING
+   (Note: The wrapper is now handled by GlowCard classes, 
+    we only style the inner table here)
+------------------------------------ */
 
-/* Cards */
-.card {
-    background: #141414;
-    border-radius: 14px;
-    padding: 16px 20px;
-    border: 1px solid #1F1F1F;
-    margin-bottom: 14px;
-    box-shadow: 0px 0px 10px rgba(211, 0, 0, 0.15);
-    font-family: 'Playfair', serif !important;
-}
-
-.card-title {
-    font-size: 0.8rem;
-    color: #8e1f1f;
-    font-weight: 600;
-    margin-bottom: 5px;
-    font-family: 'Playfair', serif !important;
-}
-
-.card-value {
-    font-size: 1.3rem;
-    font-weight: 700;
-    font-family: 'Playfair', serif !important;
-}
-
-/* TABLE CONTAINER */
-.tableBox {
-    background: #141414;
-    padding: 22px 26px;
-    border-radius: 14px;
-    width: 100%;
-    max-width: 900px;  
-    margin: 10px auto 30px auto;
-    border: 1px solid #1F1F1F;
-    box-shadow: 0px 0px 10px rgba(211, 0, 0, 0.12);
+/* Ensure the table scrolls if too wide */
+.table-responsive {
     overflow-x: auto;
+    width: 100%;
 }
 
-.tableBox h3 {
-    font-family: 'Tektur', sans-serif !important;
-    font-weight: 700 !important;
-}
-
-.tableBox p {
-    font-family: 'Playfair', serif !important;
-}
-
-/* Responsive table */
-.tableBox table {
+table {
     width: 100%;
     min-width: 400px;
+    border-collapse: collapse;
 }
 
-/* TABLE HEADER */
 table th {
     background: #161616 !important;
     color: #FFFFFF !important;
@@ -147,7 +110,6 @@ table th {
     font-family: 'Tektur', sans-serif !important;
 }
 
-/* TABLE ROWS */
 table td {
     background: #141414 !important;
     padding: 8px 8px !important;
@@ -155,23 +117,22 @@ table td {
     font-family: 'Playfair', serif !important;
 }
 
-/* Hover effect */
 table tr:hover td {
     background: #1E1E1E !important;
 }
 
-/* Center page */
+/* ------------------------------------
+   MISC
+------------------------------------ */
 .center {
     display: flex;
     justify-content: center;
 }
 
-/* Button styling */
 .stButton > button {
     background-color: #7d0e0e !important;
     color: #FFFFFF !important;
     border: none !important;
-    border-radius: px !important;
     padding: 10px 24px !important;
     font-weight: 600 !important;
     transition: all 0.3s ease !important;
@@ -216,16 +177,25 @@ def format_f1_time(raw):
 
 
 def render_f1_table(df, title):
+    """
+    Renders a dataframe as an HTML table wrapped in the 
+    GlowCard structure. Uses 'glow-large' for better visibility on big elements.
+    """
+    # 1. Handle Empty State
     if df is None or df.empty:
+        # ADDED CLASS: glow-large
         return f"""
-        <div class="tableBox">
-            <h3>{title}</h3>
-            <p style="color:#AAA;">No data yet.</p>
+        <div class="glow-card-wrapper glow-large" style="max-width: 900px; margin: 10px auto;">
+            <div class="glow-card-content">
+                <h3 style="margin-top:0;">{title}</h3>
+                <p style="color:#AAA;">No data yet.</p>
+            </div>
         </div>
         """
 
     df = df.copy()
 
+    # 2. Clean Data (Same as before)
     drop_cols = ["Status", "Session", "EventName", "Event", "Season", "Milliseconds"]
     for c in drop_cols:
         if c in df.columns:
@@ -237,16 +207,23 @@ def render_f1_table(df, title):
     if "Time" in df.columns:
         df["Time"] = df["Time"].apply(format_f1_time)
 
+    # 3. Create HTML Table
     html_table = df.to_html(
         index=False,
         classes="compact",
         border=0
     )
 
+    # 4. Wrap with GLOW-LARGE
+    # ADDED CLASS: glow-large
     return f"""
-    <div class="tableBox">
-        <h3>{title}</h3>
-        {html_table}
+    <div class="glow-card-wrapper glow-large" style="width: 100%; max-width: 900px; margin: 10px auto;">
+        <div class="glow-card-content" style="padding: 20px;">
+            <h3 style="margin-top:0; margin-bottom: 15px;">{title}</h3>
+            <div class="table-responsive">
+                {html_table}
+            </div>
+        </div>
     </div>
     """
 
@@ -264,9 +241,6 @@ latest_completed_idx = session_data["latest_completed_index"]
 next_session_name = session_data["next_session_name"]
 next_session_time = session_data["next_session_time"]
 
-# Determine which event to display for Location/Date
-# If next session exists and is in the future, show that event's location
-# Otherwise show latest completed event
 now = pd.Timestamp.now(tz="UTC")
 
 if pd.notna(next_session_time) and next_session_time > now:
@@ -282,11 +256,9 @@ if pd.notna(next_session_time) and next_session_time > now:
         if display_event is not None:
             break
     
-    # Fallback to latest completed if not found
     if display_event is None:
         display_event = events_df.iloc[latest_completed_idx]
 else:
-    # No upcoming session, show latest completed
     display_event = events_df.iloc[latest_completed_idx]
 
 event_long = display_event["EventName"]
@@ -305,25 +277,14 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     st.markdown(f"<h3>{event_long}</h3>", unsafe_allow_html=True)
-    st.markdown(f"""
-        <div class="card">
-            <div class="card-title">Location</div>
-            <div class="card-value">{location}, {country}</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Event Date</div>
-            <div class="card-value">{pd.to_datetime(event_date).strftime('%d %B %Y')}</div>
-        </div>
-    """ , unsafe_allow_html=True)
+    
+    # Use GlowCard for static info
+    GlowCard.render("Location", f"{location}, {country}")
+    GlowCard.render("Event Date", pd.to_datetime(event_date).strftime('%d %B %Y'))
 
 with col2:
     st.markdown("<h3>Next session</h3>", unsafe_allow_html=True)
-    st.markdown(f"""
-        <div class="card">
-            <div class="card-title">Type</div>
-            <div class="card-value">{next_session_name}</div>
-        </div>
-    """, unsafe_allow_html=True)
+    GlowCard.render("Type", next_session_name)
 
 # ------------------------------------
 # RESULTS SECTION WITH NAVIGATION
@@ -352,10 +313,8 @@ for idx, event in all_events.iterrows():
 if not started_events:
     st.warning("No events have started yet this season.")
 else:
-    # Find the latest completed event (default)
-    latest_completed_idx = 0
+    latest_completed_idx_calc = 0
     for i, event in enumerate(started_events):
-        # Check if last session is in the past
         last_session_date = None
         for col in ["Session5DateUtc", "Session4DateUtc", "Session3DateUtc", 
                     "Session2DateUtc", "Session1DateUtc"]:
@@ -364,17 +323,14 @@ else:
                 break
         
         if last_session_date and last_session_date < now:
-            latest_completed_idx = i
+            latest_completed_idx_calc = i
 
-    # Set default to latest completed event (only on first load)
     if "event_index_initialized" not in st.session_state:
-        st.session_state.event_index = latest_completed_idx
+        st.session_state.event_index = latest_completed_idx_calc
         st.session_state.event_index_initialized = True
 
-    # Clamp index to valid range
     st.session_state.event_index = max(0, min(st.session_state.event_index, len(started_events) - 1))
 
-    # Get current event to display
     current_display_event = started_events[st.session_state.event_index]
     display_event_name = current_display_event["EventName"]
     display_event_key = current_display_event["OfficialEventName"]
@@ -397,10 +353,8 @@ else:
             st.session_state.event_index += 1
             st.rerun()
 
-    # Load results for selected event
     display_results = load_event_results(season_year, display_event_key)
 
-    # Pair tables: Sprint + Sprint Quali, then Quali + Race
     pairs = [
         ("S", "Sprint", "SQ", "Sprint Qualifying"),
         ("Q", "Qualifying", "R", "Race")
@@ -417,18 +371,23 @@ else:
 # ------------------------------------
 # COUNTDOWN SECTION
 # ------------------------------------
-import time
 
 st.markdown("<h2 class='section-title'>Next Session Countdown</h2>", unsafe_allow_html=True)
 
 countdown_box = st.empty()
 
 def render_countdown():
+    """
+    Renders the countdown using the GlowCard HTML structure.
+    """
     if next_session_time is None or pd.isna(next_session_time):
+        # Fallback using Glow Card classes manually
         countdown_box.markdown("""
-            <div class="card">
-                <div class="card-title">Time until next session</div>
-                <div class="card-value">n/a</div>
+            <div class="glow-card-wrapper">
+                <div class="glow-card-content">
+                    <div class="gc-title">Time until next session</div>
+                    <div class="gc-value">n/a</div>
+                </div>
             </div>
         """, unsafe_allow_html=True)
         return
@@ -449,17 +408,19 @@ def render_countdown():
             countdown_text = f"{days}d {hrs:02d}h {mins:02d}m {secs:02d}s"
         else:
             countdown_text = f"{hrs:02d}h {mins:02d}m {secs:02d}s"
-            
+    
+    # Render with the same HTML class structure as GlowCard
     countdown_box.markdown(
         f"""
-        <div class="card">
-            <div class="card-title">Time until next session</div>
-            <div class="card-value">{countdown_text}</div>
+        <div class="glow-card-wrapper">
+            <div class="glow-card-content">
+                <div class="gc-title">Time until next session</div>
+                <div class="gc-value">{countdown_text}</div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
-
 
 # Live ticking countdown
 while True:
