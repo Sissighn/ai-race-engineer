@@ -3,11 +3,13 @@ import pandas as pd
 from typing import Optional
 import logging
 
-# Setup logging
+import streamlit as st
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+@st.cache_data(ttl=600, show_spinner="Loading F1 schedule...")
 def get_latest_sessions(year: Optional[int] = None) -> dict:
     """
     Returns complete event data for navigation and next session info.
@@ -95,7 +97,6 @@ def get_latest_sessions(year: Optional[int] = None) -> dict:
         "LastSessionDateUtc",
     ]
 
-    # Only keep columns that exist
     keep_cols = [c for c in keep_cols if c in events.columns]
     events = events[keep_cols].copy()
 
@@ -245,6 +246,7 @@ def load_single_session_results(
         return None
 
 
+@st.cache_data(show_spinner="Loading season results...")
 def get_season_results(year: int, event_key: str) -> dict[str, Optional[pd.DataFrame]]:
     """
     Returns a dict of DataFrames for one event (GP).

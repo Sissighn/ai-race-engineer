@@ -2,29 +2,27 @@ import os
 import fastf1
 import pandas as pd
 import numpy as np
+import streamlit as st
 
 
 # ---------------------------------------------------------
 # CORRECT PROJECT ROOT
 # ---------------------------------------------------------
-# File: project/src/data/load_data.py
-# We go up 2 levels → project/src/data → src → project root
 this_file = os.path.abspath(__file__)
 data_folder = os.path.dirname(this_file)
 src_folder = os.path.dirname(data_folder)
 project_root = os.path.dirname(src_folder)
 
-# Cache path
 cache_path = os.path.join(project_root, "cache")
 os.makedirs(cache_path, exist_ok=True)
 
-# Enable FastF1 cache
 fastf1.Cache.enable_cache(cache_path)
 
 
 # ---------------------------------------------------------
 # LOAD SESSION
 # ---------------------------------------------------------
+@st.cache_data(show_spinner="Loading session data...")
 def load_session(year: int, grand_prix: str, session_type: str):
     """
     Load a FastF1 session (modern API).
@@ -37,6 +35,7 @@ def load_session(year: int, grand_prix: str, session_type: str):
 # ---------------------------------------------------------
 # LOAD BASIC TELEMETRY (DISTANCE, SPEED, THROTTLE, BRAKE)
 # ---------------------------------------------------------
+@st.cache_data(show_spinner="Loading telemetry for driver...")
 def load_telemetry(session, driver_code: str):
     """
     Load the fastest lap for the given driver with distance added.
@@ -61,6 +60,7 @@ def load_telemetry(session, driver_code: str):
 # ---------------------------------------------------------
 # LOAD TELEMETRY WITH X/Y POSITION FOR TRACK MAP
 # ---------------------------------------------------------
+@st.cache_data(show_spinner="Loading telemetry with position data...")
 def load_telemetry_with_position(session, driver_code: str):
     """
     Loads full telemetry including X/Y GPS and real Speed.
@@ -118,6 +118,7 @@ def load_telemetry_with_position(session, driver_code: str):
         merged.loc[merged["Speed"].isna(), "Speed"] = speed_calc_series.loc[
             merged["Speed"].isna()
         ]
+
     # ----------------------------
     # Fix distance if missing
     # ----------------------------
