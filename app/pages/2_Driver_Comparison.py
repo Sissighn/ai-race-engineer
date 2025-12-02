@@ -16,7 +16,7 @@ if project_root not in sys.path:
 # -------------------------------------------------------
 from app.utils.ui import load_css
 from app.components.navbar import navbar
-from app.components.glow_card import GlowCard  # <--- NEU: GlowCard importiert
+from app.components.glow_card import GlowCard
 from app.components.plots import (
     plot_time_loss_bar,
     plot_speed_deltas,
