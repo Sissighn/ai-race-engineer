@@ -24,6 +24,8 @@ from app.components.plots import (
     plot_brake_throttle,
     plot_gear_usage,
     plot_apex_speed_share,
+    plot_driver_dna,  # Radar Chart
+    plot_corner_type_performance,  # Corner Type Bar Chart
 )
 from app.components.track_map import plot_track_map
 from app.components.advanced_plots.plot_delta_lap import (
@@ -35,14 +37,19 @@ from src.data.load_data import load_session, load_telemetry
 from src.data.compare import compare_drivers_corner_level, sync_telemetry
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
 from src.insights.coaching_engine import coaching_suggestions
-from src.insights.driver_dna import compare_driver_dna  # <--- NEU IMPORTIEREN
-from app.components.plots import plot_driver_dna  # <--- NEU IMPORTIEREN
+from src.insights.driver_dna import compare_driver_dna
+from src.insights.corner_utils import (
+    add_corner_classification,
+    aggregate_time_loss_by_type,
+    get_corner_type_advice,
+)
 
 
 # -------------------------------------------------------
 # UTILS — RESET CACHE
 # -------------------------------------------------------
 def reset_cache():
+    """Resets session state variables when selection changes."""
     keys = ["session", "drivers_full", "driver_map", "compare_result"]
     for k in keys:
         if k in st.session_state:
@@ -57,7 +64,10 @@ st.set_page_config(
     layout="wide",
 )
 
+# Load global styling (removes header, sets fonts, etc.)
 load_css()
+
+# Render Navbar
 navbar()
 
 # -------------------------------------------------------
@@ -101,7 +111,7 @@ TRACKS = [
 ]
 
 with col2:
-    # Fallback, falls Silverstone nicht in der Liste wäre
+    # Default to Silverstone if available, else first track
     idx = TRACKS.index("Silverstone") if "Silverstone" in TRACKS else 0
     track = st.selectbox("Track", TRACKS, index=idx)
 
@@ -129,7 +139,7 @@ if st.button("Load session"):
         session = load_session(year, track, session_type)
 
         driver_map = {}
-        # Sicherheitscheck, falls 'laps' noch nicht geladen ist
+        # Robust check for drivers in the session
         unique_drivers = (
             sorted(session.laps["Driver"].unique()) if hasattr(session, "laps") else []
         )
@@ -145,7 +155,7 @@ if st.button("Load session"):
         st.session_state["drivers_full"] = list(driver_map.keys())
         st.session_state["driver_map"] = driver_map
 
-        st.success("Session loaded.")
+        st.success("Session loaded successfully.")
         st.rerun()
 
     except Exception as e:
@@ -177,11 +187,15 @@ if st.session_state.get("drivers_full"):
             session = st.session_state["session"]
 
             with st.spinner("Analyzing Telemetry..."):
+                # Load telemetry data
                 telA = load_telemetry(session, driverA)
                 telB = load_telemetry(session, driverB)
+
+                # Perform corner analysis
                 comp = compare_drivers_corner_level(session, driverA, driverB)
                 tl = estimate_time_loss_per_corner(comp, driverA, driverB)
 
+            # Store results in session state
             st.session_state["compare_result"] = {
                 "session": session,
                 "driverA": driverA,
@@ -208,72 +222,99 @@ if st.session_state.get("compare_result"):
     driverB = data["driverB"]
     session = data["session"]
 
-    # Tabs
+    # Create Tabs
     tab_overview, tab_inputs, tab_corners, tab_coaching = st.tabs(
         ["Overview", "Driver Inputs", "Corners", "Coaching"]
     )
 
-    # --- Overview ---
+    # -------------------------------------------------------
+    # 1. OVERVIEW TAB
+    # -------------------------------------------------------
     with tab_overview:
         st.markdown("<h2 class='section-title'>Summary</h2>", unsafe_allow_html=True)
         total_delta = tl["TimeLoss"].sum()
 
-        # FIX: Hier jetzt GlowCard statt manuellem HTML nutzen
+        # Key Performance Indicators
         c1, c2, c3 = st.columns(3)
         with c1:
-            GlowCard.render("Total Time Delta", f"{total_delta:.2f}s")
+            GlowCard.render("Total Time Delta", f"{total_delta:.3f}s")
         with c2:
-            GlowCard.render("Best Corners", "See charts")
+            GlowCard.render("Track Status", "Dry")  # Placeholder
         with c3:
-            GlowCard.render("Worst Corners", "See charts")
+            GlowCard.render("Session", session_type)
 
-        st.markdown("<h3>Time Loss per Corner</h3>", unsafe_allow_html=True)
-        plot_time_loss_bar(tl)
+        # --- DRIVER DNA ANALYSIS ---
+        st.markdown("<h3>Driver Style Analysis (DNA)</h3>", unsafe_allow_html=True)
+        try:
+            dna_df = compare_driver_dna(telA, telB, driverA, driverB)
 
+            # Layout: Radar Chart Left, Time Loss Bar Right
+            col_dna, col_loss = st.columns([1, 1])
+
+            with col_dna:
+                plot_driver_dna(dna_df, driverA, driverB, key="radar_chart_overview")
+                st.caption(
+                    f"Analysis based on telemetry patterns (Aggressiveness, Smoothness, Input Workload)."
+                )
+
+            with col_loss:
+                st.markdown("<b>Time Loss Distribution</b>", unsafe_allow_html=True)
+                plot_time_loss_bar(tl, key="time_loss_bar_overview")
+
+        except Exception as e:
+            st.error(f"Could not calculate Driver DNA: {e}")
+
+        st.markdown("---")
+
+        # --- CORNER TYPE ANALYSIS ---
+        st.markdown("<h3>Performance by Corner Type</h3>", unsafe_allow_html=True)
+
+        # 1. Classify corners
+        tl_classified = add_corner_classification(tl)
+
+        # 2. Aggregate data
+        agg_types = aggregate_time_loss_by_type(tl_classified)
+
+        # 3. Visualization with Safety Check
+        if agg_types is not None and not agg_types.empty:
+
+            col_type_chart, col_type_text = st.columns([2, 1])
+
+            with col_type_chart:
+                plot_corner_type_performance(agg_types, key="corner_type_chart")
+
+            with col_type_text:
+                st.markdown("#### Engineering Insights")
+                advice_list = get_corner_type_advice(agg_types)
+
+                if not advice_list:
+                    st.info("No major corner type dominance found.")
+                else:
+                    for advice in advice_list:
+                        st.info(advice, icon="🏎️")
+
+                st.markdown("###### Breakdown")
+
+                # Safe to render styled dataframe
+                st.dataframe(
+                    agg_types.style.format({"TimeLoss": "{:.3f}s"}),
+                    hide_index=True,
+                    use_container_width=True,
+                )
+        else:
+            # Fallback if classification failed
+            st.warning("Could not classify corners (Missing Speed Data).")
+
+        # Additional Charts
         st.markdown("<h3>Speed Delta (Apex & Exit)</h3>", unsafe_allow_html=True)
-        plot_speed_deltas(tl, driverA, driverB)
+        plot_speed_deltas(tl, driverA, driverB, key="speed_deltas_overview")
 
         st.markdown("<h3>Apex Speed Share</h3>", unsafe_allow_html=True)
-        plot_apex_speed_share(tl)
+        plot_apex_speed_share(tl, key="apex_share_overview")
 
-    # --- Inputs ---
-    with tab_inputs:
-        st.markdown(
-            "<h2 class='section-title'>Driver Inputs</h2>", unsafe_allow_html=True
-        )
-        ctm1, ctm2 = st.columns(2)
-        with ctm1:
-            plot_track_map(session, driverA, track)
-        with ctm2:
-            plot_track_map(session, driverB, track)
-
-        plot_speed_profile(telA, telB, driverA, driverB)
-        plot_brake_throttle(telA, telB, driverA, driverB)
-        plot_gear_usage(telA, driverA)
-        plot_gear_usage(telB, driverB)
-
-    # --- Corners ---
-    with tab_corners:
-        st.markdown(
-            "<h2 class='section-title'>Corner-by-Corner Data</h2>",
-            unsafe_allow_html=True,
-        )
-
-        st.dataframe(tl, width="stretch")
-
-    # --- Coaching ---
-    with tab_coaching:
-        st.markdown(
-            "<h2 class='section-title'>AI Coaching</h2>", unsafe_allow_html=True
-        )
-        suggestions = coaching_suggestions(tl, driverA, driverB)
-        if not suggestions:
-            st.info("No significant weaknesses found.")
-        else:
-            for s in suggestions:
-                st.markdown(f"- {s}")
-
-    # --- Delta Lap ---
+    # -------------------------------------------------------
+    # DELTA LAP OVERLAY (Always visible below tabs)
+    # -------------------------------------------------------
     st.markdown("<h3>Delta Lap Overlay</h3>", unsafe_allow_html=True)
     try:
         tel_sync = sync_telemetry(telA, telB)
@@ -288,25 +329,50 @@ if st.session_state.get("compare_result"):
     except Exception as e:
         st.warning(f"Could not compute Delta Lap: {e}")
 
-    # --- DRIVER DNA ---
-    st.markdown("<h3>Driver Style Analysis (DNA)</h3>", unsafe_allow_html=True)
+    # -------------------------------------------------------
+    # 2. DRIVER INPUTS TAB
+    # -------------------------------------------------------
+    with tab_inputs:
+        st.markdown(
+            "<h2 class='section-title'>Driver Inputs</h2>", unsafe_allow_html=True
+        )
+        ctm1, ctm2 = st.columns(2)
+        with ctm1:
+            plot_track_map(session, driverA, track)
+        with ctm2:
+            plot_track_map(session, driverB, track)
 
-    try:
-        dna_df = compare_driver_dna(telA, telB, driverA, driverB)
+        plot_speed_profile(telA, telB, driverA, driverB, key="speed_prof_inputs")
+        plot_brake_throttle(telA, telB, driverA, driverB, key="brake_thr_inputs")
 
-        # Layout: Links Radar Chart, Rechts Time Loss
-        col_dna, col_loss = st.columns([1, 1])
+        col_gear1, col_gear2 = st.columns(2)
+        with col_gear1:
+            plot_gear_usage(telA, driverA, key="gear_A")
+        with col_gear2:
+            plot_gear_usage(telB, driverB, key="gear_B")
 
-        with col_dna:
-            plot_driver_dna(dna_df, driverA, driverB)
-            st.caption(
-                f"Analysis based on telemetry patterns (Aggressiveness, Smoothness, Input Workload)."
-            )
+    # -------------------------------------------------------
+    # 3. CORNERS TAB
+    # -------------------------------------------------------
+    with tab_corners:
+        st.markdown(
+            "<h2 class='section-title'>Corner-by-Corner Data</h2>",
+            unsafe_allow_html=True,
+        )
+        # Using 'stretch' for full width in newer Streamlit versions
+        # Or None if stretch causes issues on your version
+        st.dataframe(tl, use_container_width=True)
 
-        with col_loss:
-            # Time Loss Bar Chart hierhin verschieben oder kopieren
-            st.markdown("<b>Time Loss Distribution</b>", unsafe_allow_html=True)
-            plot_time_loss_bar(tl, key="time_loss_bar_dna")
-
-    except Exception as e:
-        st.error(f"Could not calculate Driver DNA: {e}")
+    # -------------------------------------------------------
+    # 4. COACHING TAB
+    # -------------------------------------------------------
+    with tab_coaching:
+        st.markdown(
+            "<h2 class='section-title'>AI Coaching</h2>", unsafe_allow_html=True
+        )
+        suggestions = coaching_suggestions(tl, driverA, driverB)
+        if not suggestions:
+            st.info("No significant weaknesses found.")
+        else:
+            for s in suggestions:
+                st.markdown(f"- {s}")

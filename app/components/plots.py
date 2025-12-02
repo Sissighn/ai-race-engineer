@@ -280,3 +280,50 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
 
     # Hier übergeben wir den Key an Streamlit!
     st.plotly_chart(fig, use_container_width=True, key=key)
+
+
+# -------------------------------------------------------
+# 8) CORNER TYPE PERFORMANCE
+# -------------------------------------------------------
+def plot_corner_type_performance(agg_df, key="corner_type_perf"):
+    """
+    Zeigt den kumulierten Zeitverlust pro Kurventyp an.
+    """
+    if agg_df is None or agg_df.empty:
+        st.info("No classification data available.")
+        return
+
+    color_map = {
+        "Low Speed": "#FFDD94",  # Gelb
+        "Medium Speed": "#8FD3FE",  # Blau
+        "High Speed": "#FFB7D5",  # Rot/Rosa
+    }
+
+    fig = px.bar(
+        agg_df,
+        x="CornerType",
+        y="TimeLoss",
+        text="TimeLoss",
+        title="Time Loss by Corner Category",
+        color="CornerType",
+        color_discrete_map=color_map,
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:.3f}s",
+        textposition="outside",
+        width=0.5,  # Balken nicht zu fett machen
+    )
+
+    # Layout Anpassungen
+    fig.update_layout(
+        template="plotly_dark",
+        plot_bgcolor=DARK_BG,
+        paper_bgcolor=DARK_PAPER,
+        font_color=TEXT_COLOR,
+        showlegend=False,
+        yaxis=dict(title="Total Time Delta (s)", zeroline=True, zerolinecolor="#555"),
+        xaxis=dict(title=""),
+    )
+
+    st.plotly_chart(fig, use_container_width=True, key=key)
