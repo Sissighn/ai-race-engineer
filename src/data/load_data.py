@@ -33,6 +33,7 @@ def load_session(year: int, grand_prix: str, session_type: str):
     session.load()  # <- FastF1 lädt automatisch Telemetry, Positions, Weather
     return session
 
+
 # ---------------------------------------------------------
 # LOAD BASIC TELEMETRY (DISTANCE, SPEED, THROTTLE, BRAKE)
 # ---------------------------------------------------------
@@ -110,14 +111,13 @@ def load_telemetry_with_position(session, driver_code: str):
 
         dt = np.where(dt == 0, np.nan, dt)
 
-
         speed_calc = np.zeros(len(merged))
         speed_calc[1:] = (dist_xy / dt) * 3.6  # m/s → km/h
 
-        speed_calc_series = pd.Series(speed_calc, index=merged.index[:len(speed_calc)])
+        speed_calc_series = pd.Series(speed_calc, index=merged.index[: len(speed_calc)])
         merged.loc[merged["Speed"].isna(), "Speed"] = speed_calc_series.loc[
-        merged["Speed"].isna()
-    ]
+            merged["Speed"].isna()
+        ]
     # ----------------------------
     # Fix distance if missing
     # ----------------------------

@@ -1,11 +1,13 @@
 import pandas as pd
 import re
 
+
 def clean_position(num):
     try:
         return int(float(num))
     except:
         return num
+
 
 # Convert F1 time format
 def format_f1_time(raw):
@@ -14,7 +16,7 @@ def format_f1_time(raw):
     """
     text = str(raw)
 
-    match = re.search(r'(\d+ days )?(\d+):(\d+):(\d+\.\d+)', text)
+    match = re.search(r"(\d+ days )?(\d+):(\d+):(\d+\.\d+)", text)
     if not match:
         return text
 
@@ -28,7 +30,7 @@ def format_f1_time(raw):
 
 def render_f1_table(df, title):
     """
-    Renders a dataframe as an HTML table wrapped in the 
+    Renders a dataframe as an HTML table wrapped in the
     GlowCard structure. Uses 'glow-large' for better visibility on big elements.
     """
     # 1. Handle Empty State
@@ -58,14 +60,9 @@ def render_f1_table(df, title):
         df["Time"] = df["Time"].apply(format_f1_time)
 
     # 3. Create HTML Table
-    html_table = df.to_html(
-        index=False,
-        classes="compact",
-        border=0
-    )
+    html_table = df.to_html(index=False, classes="compact", border=0)
 
     # 4. Wrap with GLOW-LARGE
-    # ADDED CLASS: glow-large
     return f"""
     <div class="glow-card-wrapper glow-large" style="width: 100%; max-width: 900px; margin: 10px auto;">
         <div class="glow-card-content" style="padding: 20px;">

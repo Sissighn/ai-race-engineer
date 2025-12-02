@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 
+
 def compute_delta_lap(telA, telB):
     """
     Computes delta time between two synchronized telemetry laps.
@@ -14,12 +15,7 @@ def compute_delta_lap(telA, telB):
     """
 
     # Both already synced via merge_asof in your sync function
-    df = telA.merge(
-        telB,
-        on="Distance",
-        how="inner",
-        suffixes=("_A", "_B")
-    )
+    df = telA.merge(telB, on="Distance", how="inner", suffixes=("_A", "_B"))
 
     # Time stamps must exist
     if "Time_A" not in df.columns or "Time_B" not in df.columns:
@@ -33,7 +29,7 @@ def compute_delta_lap(telA, telB):
     df["DeltaTime"] = df["Time_A_s"] - df["Time_B_s"]
 
     return df[["Distance", "DeltaTime"]]
-    
+
 
 def plot_delta_lap(delta_df, driverA, driverB):
     """
@@ -54,7 +50,7 @@ def plot_delta_lap(delta_df, driverA, driverB):
     # Dark mode styling
     ax.set_facecolor("#111111")
     fig.patch.set_facecolor("#111111")
-    ax.tick_params(axis='x', colors='white')
-    ax.tick_params(axis='y', colors='white')
+    ax.tick_params(axis="x", colors="white")
+    ax.tick_params(axis="y", colors="white")
 
     st.pyplot(fig)

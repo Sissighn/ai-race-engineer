@@ -3,6 +3,7 @@ from src.data.load_data import load_telemetry
 from src.data.preprocess import preprocess_telemetry
 from src.data.feature_engineering import build_features
 
+
 def load_and_process_driver(session, driver_code):
     """Loads telemetry for a driver and runs full preprocessing + feature engineering."""
     tel = load_telemetry(session, driver_code)
@@ -28,9 +29,16 @@ def compare_drivers(session, driver_a, driver_b):
     merged = fa.merge(fb, on="Corner", suffixes=(f"_{driver_a}", f"_{driver_b}"))
 
     # Create deltas between Driver A (target) and B
-    merged["Delta_ApexSpeed"] = merged[f"ApexSpeed_{driver_a}"] - merged[f"ApexSpeed_{driver_b}"]
-    merged["Delta_ExitSpeed"] = merged[f"ExitSpeed_{driver_a}"] - merged[f"ExitSpeed_{driver_b}"]
-    merged["Delta_ThrottleBelow30"] = merged[f"ThrottleBelow30Pct_{driver_a}"] - merged[f"ThrottleBelow30Pct_{driver_b}"]
+    merged["Delta_ApexSpeed"] = (
+        merged[f"ApexSpeed_{driver_a}"] - merged[f"ApexSpeed_{driver_b}"]
+    )
+    merged["Delta_ExitSpeed"] = (
+        merged[f"ExitSpeed_{driver_a}"] - merged[f"ExitSpeed_{driver_b}"]
+    )
+    merged["Delta_ThrottleBelow30"] = (
+        merged[f"ThrottleBelow30Pct_{driver_a}"]
+        - merged[f"ThrottleBelow30Pct_{driver_b}"]
+    )
 
     return merged
 
@@ -45,9 +53,10 @@ def sync_telemetry(tel1, tel2):
         tel2.sort_values("Distance"),
         on="Distance",
         direction="nearest",
-        suffixes=("_1", "_2")
+        suffixes=("_1", "_2"),
     )
     return merged
+
 
 def compare_drivers_corner_level(session, driver_a: str, driver_b: str) -> pd.DataFrame:
     """
@@ -69,33 +78,49 @@ def compare_drivers_corner_level(session, driver_a: str, driver_b: str) -> pd.Da
     feat_b = build_features(tel_b)
 
     # Prefix columns with driver code, Corner bleibt als Merge-Key
-    feat_a = feat_a.rename(columns={
-        col: f"{driver_a}_{col}" for col in feat_a.columns if col != "Corner"
-    })
-    feat_b = feat_b.rename(columns={
-        col: f"{driver_b}_{col}" for col in feat_b.columns if col != "Corner"
-    })
+    feat_a = feat_a.rename(
+        columns={col: f"{driver_a}_{col}" for col in feat_a.columns if col != "Corner"}
+    )
+    feat_b = feat_b.rename(
+        columns={col: f"{driver_b}_{col}" for col in feat_b.columns if col != "Corner"}
+    )
 
     # Merge on Corner
     merged = feat_a.merge(feat_b, on="Corner", how="inner")
 
     # Delta-Metriken (A - B)
-    merged["Delta_ApexSpeed"]   = merged[f"{driver_a}_ApexSpeed"]   - merged[f"{driver_b}_ApexSpeed"]
-    merged["Delta_EntrySpeed"]  = merged[f"{driver_a}_EntrySpeed"]  - merged[f"{driver_b}_EntrySpeed"]
-    merged["Delta_ExitSpeed"]   = merged[f"{driver_a}_ExitSpeed"]   - merged[f"{driver_b}_ExitSpeed"]
-    merged["Delta_SpeedLoss"]   = merged[f"{driver_a}_SpeedLoss"]   - merged[f"{driver_b}_SpeedLoss"]
-    merged["Delta_SpeedGain"]   = merged[f"{driver_a}_SpeedGain"]   - merged[f"{driver_b}_SpeedGain"]
-    merged["Delta_AvgBrake"]    = merged[f"{driver_a}_AvgBrake"]    - merged[f"{driver_b}_AvgBrake"]
-    merged["Delta_AvgThrottle"] = merged[f"{driver_a}_AvgThrottle"] - merged[f"{driver_b}_AvgThrottle"]
+    merged["Delta_ApexSpeed"] = (
+        merged[f"{driver_a}_ApexSpeed"] - merged[f"{driver_b}_ApexSpeed"]
+    )
+    merged["Delta_EntrySpeed"] = (
+        merged[f"{driver_a}_EntrySpeed"] - merged[f"{driver_b}_EntrySpeed"]
+    )
+    merged["Delta_ExitSpeed"] = (
+        merged[f"{driver_a}_ExitSpeed"] - merged[f"{driver_b}_ExitSpeed"]
+    )
+    merged["Delta_SpeedLoss"] = (
+        merged[f"{driver_a}_SpeedLoss"] - merged[f"{driver_b}_SpeedLoss"]
+    )
+    merged["Delta_SpeedGain"] = (
+        merged[f"{driver_a}_SpeedGain"] - merged[f"{driver_b}_SpeedGain"]
+    )
+    merged["Delta_AvgBrake"] = (
+        merged[f"{driver_a}_AvgBrake"] - merged[f"{driver_b}_AvgBrake"]
+    )
+    merged["Delta_AvgThrottle"] = (
+        merged[f"{driver_a}_AvgThrottle"] - merged[f"{driver_b}_AvgThrottle"]
+    )
     merged["Delta_ThrottleBelow30Pct"] = (
-        merged[f"{driver_a}_ThrottleBelow30Pct"] - merged[f"{driver_b}_ThrottleBelow30Pct"]
+        merged[f"{driver_a}_ThrottleBelow30Pct"]
+        - merged[f"{driver_b}_ThrottleBelow30Pct"]
     )
 
     return merged
+
 
 __all__ = [
     "compare_drivers",
     "compare_drivers_corner_level",
     "sync_telemetry",
-    "load_and_process_driver"
+    "load_and_process_driver",
 ]

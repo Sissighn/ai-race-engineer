@@ -6,6 +6,7 @@ from scipy.signal import find_peaks
 # 1. Corner Segmentation
 # ----------------------------------------------------------
 
+
 def segment_corners(tel, prominence=5, window=40):
     """
     Corner segmentation:
@@ -63,10 +64,10 @@ def segment_corners(tel, prominence=5, window=40):
     return df
 
 
-
 # ----------------------------------------------------------
 # 2. Corner Metrics: Entry / Apex / Exit Speed
 # ----------------------------------------------------------
+
 
 def compute_corner_features(tel):
     """
@@ -87,17 +88,19 @@ def compute_corner_features(tel):
             continue
 
         entry = seg["Speed"].iloc[0]
-        apex  = seg["Speed"].min()
-        exit  = seg["Speed"].iloc[-1]
+        apex = seg["Speed"].min()
+        exit = seg["Speed"].iloc[-1]
 
-        features.append({
-            "Corner": int(c),
-            "EntrySpeed": float(entry),
-            "ApexSpeed": float(apex),
-            "ExitSpeed": float(exit),
-            "SpeedLoss": float(entry - apex),
-            "SpeedGain": float(exit - apex)
-        })
+        features.append(
+            {
+                "Corner": int(c),
+                "EntrySpeed": float(entry),
+                "ApexSpeed": float(apex),
+                "ExitSpeed": float(exit),
+                "SpeedLoss": float(entry - apex),
+                "SpeedGain": float(exit - apex),
+            }
+        )
 
     return pd.DataFrame(features)
 
@@ -105,6 +108,7 @@ def compute_corner_features(tel):
 # ----------------------------------------------------------
 # 3. Throttle / Brake Behavior
 # ----------------------------------------------------------
+
 
 def compute_throttle_brake_metrics(tel):
     """
@@ -123,12 +127,14 @@ def compute_throttle_brake_metrics(tel):
         avg_throttle = seg["Throttle"].mean()
         throttle_low = len(seg[seg["Throttle"] < 30]) / len(seg)
 
-        metrics.append({
-            "Corner": int(c),
-            "AvgBrake": float(avg_brake),
-            "AvgThrottle": float(avg_throttle),
-            "ThrottleBelow30Pct": float(throttle_low)
-        })
+        metrics.append(
+            {
+                "Corner": int(c),
+                "AvgBrake": float(avg_brake),
+                "AvgThrottle": float(avg_throttle),
+                "ThrottleBelow30Pct": float(throttle_low),
+            }
+        )
 
     return pd.DataFrame(metrics)
 
@@ -136,6 +142,7 @@ def compute_throttle_brake_metrics(tel):
 # ----------------------------------------------------------
 # 4. Full Feature Pipeline
 # ----------------------------------------------------------
+
 
 def build_features(tel):
     """

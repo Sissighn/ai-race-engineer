@@ -16,15 +16,16 @@ DARK_BG = "#141414"
 DARK_PAPER = "#191919"
 TEXT_COLOR = "#FFFFFF"
 
+
 # ---------------------------------------------------------
 # Pastel Neon Speed Colormap (matching your plotly theme)
 # ---------------------------------------------------------
 def _dark_pastel_speed_cmap():
     colors = [
-        (0.75, 0.82, 1.00),   # neon-light blue
-        (0.80, 0.70, 1.00),   # neon lavender
-        (0.95, 0.75, 0.95),   # soft pink
-        (1.00, 0.88, 0.60),   # pastel peach
+        (0.75, 0.82, 1.00),  # neon-light blue
+        (0.80, 0.70, 1.00),  # neon lavender
+        (0.95, 0.75, 0.95),  # soft pink
+        (1.00, 0.88, 0.60),  # pastel peach
     ]
     return LinearSegmentedColormap.from_list("dark_pastel_speed", colors)
 
@@ -46,12 +47,7 @@ def _line_heatmap_dark(x, y, values, ax, fig):
     norm = plt.Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
     cmap = _dark_pastel_speed_cmap()
 
-    lc = LineCollection(
-        segments,
-        cmap=cmap,
-        norm=norm,
-        linewidth=3.2
-    )
+    lc = LineCollection(segments, cmap=cmap, norm=norm, linewidth=3.2)
     lc.set_array(values)
 
     ax.add_collection(lc)
@@ -66,7 +62,7 @@ def _line_heatmap_dark(x, y, values, ax, fig):
     # Colorbar dark styling
     cbar.outline.set_edgecolor(TEXT_COLOR)
     cbar.ax.yaxis.set_tick_params(color=TEXT_COLOR)
-    plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), color=TEXT_COLOR)
+    plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color=TEXT_COLOR)
 
     return lc
 
@@ -76,7 +72,9 @@ def _line_heatmap_dark(x, y, values, ax, fig):
 # ---------------------------------------------------------
 def show_track_outline_svg(track: str):
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    svg_path = os.path.join(project_root, "app", "assets", "tracks", f"{track.lower()}.svg")
+    svg_path = os.path.join(
+        project_root, "app", "assets", "tracks", f"{track.lower()}.svg"
+    )
 
     if os.path.exists(svg_path):
         st.image(svg_path, use_container_width=True)
@@ -119,12 +117,7 @@ def plot_track_map(session, driver_code: str, track: str, mode="speed"):
         return
 
     # Dark title
-    ax.set_title(
-        f"{track} – {driver_code}",
-        fontsize=10,
-        pad=6,
-        color=TEXT_COLOR
-    )
+    ax.set_title(f"{track} – {driver_code}", fontsize=10, pad=6, color=TEXT_COLOR)
 
     st.pyplot(fig)
     plt.close(fig)

@@ -9,10 +9,8 @@ DARK_BG = "#141414"
 DARK_PAPER = "#191919"
 TEXT_COLOR = "#FFFFFF"
 
-PASTEL_COLORS = [
-    "#A48FFF", "#FFB7D5", "#8FD3FE", 
-    "#FFDD94", "#C9F7C5", "#FDCFE8"
-]
+PASTEL_COLORS = ["#A48FFF", "#FFB7D5", "#8FD3FE", "#FFDD94", "#C9F7C5", "#FDCFE8"]
+
 
 def dark_layout(fig, title=None):
     fig.update_layout(
@@ -39,7 +37,7 @@ def plot_time_loss_bar(df):
         y="TimeLoss",
         color="TimeLoss",
         color_continuous_scale=px.colors.sequential.Purples,
-        height=380
+        height=380,
     )
 
     fig = dark_layout(fig, "Time Loss per Corner")
@@ -57,19 +55,23 @@ def plot_speed_deltas(df, driver_a, driver_b):
 
     fig = go.Figure()
 
-    fig.add_trace(go.Bar(
-        x=df["Corner"],
-        y=df["Delta_ApexSpeed"],
-        name="Apex Speed Delta",
-        marker_color="#A48FFF"
-    ))
+    fig.add_trace(
+        go.Bar(
+            x=df["Corner"],
+            y=df["Delta_ApexSpeed"],
+            name="Apex Speed Delta",
+            marker_color="#A48FFF",
+        )
+    )
 
-    fig.add_trace(go.Bar(
-        x=df["Corner"],
-        y=df["Delta_ExitSpeed"],
-        name="Exit Speed Delta",
-        marker_color="#8FD3FE"
-    ))
+    fig.add_trace(
+        go.Bar(
+            x=df["Corner"],
+            y=df["Delta_ExitSpeed"],
+            name="Exit Speed Delta",
+            marker_color="#8FD3FE",
+        )
+    )
 
     fig = dark_layout(fig, f"Speed Deltas – {driver_a} vs {driver_b}")
     fig.update_xaxes(title_text="Corner")
@@ -85,21 +87,25 @@ def plot_speed_profile(telA, telB, driverA, driverB):
 
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(
-        x=telA["Distance"],
-        y=telA["Speed"],
-        mode="lines",
-        name=f"{driverA} Speed",
-        line=dict(color="#A48FFF", width=2)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=telA["Distance"],
+            y=telA["Speed"],
+            mode="lines",
+            name=f"{driverA} Speed",
+            line=dict(color="#A48FFF", width=2),
+        )
+    )
 
-    fig.add_trace(go.Scatter(
-        x=telB["Distance"],
-        y=telB["Speed"],
-        mode="lines",
-        name=f"{driverB} Speed",
-        line=dict(color="#FFB7D5", width=2)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=telB["Distance"],
+            y=telB["Speed"],
+            mode="lines",
+            name=f"{driverB} Speed",
+            line=dict(color="#FFB7D5", width=2),
+        )
+    )
 
     fig = dark_layout(fig, f"Speed Profile – {driverA} vs {driverB}")
     fig.update_xaxes(title_text="Distance (m)")
@@ -116,38 +122,46 @@ def plot_brake_throttle(telA, telB, driverA, driverB):
     fig = go.Figure()
 
     # --- Driver A ---
-    fig.add_trace(go.Scatter(
-        x=telA["Distance"],
-        y=telA["Brake"],
-        name=f"{driverA} Brake",
-        mode="lines",
-        line=dict(color="#A48FFF", width=2)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=telA["Distance"],
+            y=telA["Brake"],
+            name=f"{driverA} Brake",
+            mode="lines",
+            line=dict(color="#A48FFF", width=2),
+        )
+    )
 
-    fig.add_trace(go.Scatter(
-        x=telA["Distance"],
-        y=telA["Throttle"],
-        name=f"{driverA} Throttle",
-        mode="lines",
-        line=dict(color="#8FD3FE", width=2)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=telA["Distance"],
+            y=telA["Throttle"],
+            name=f"{driverA} Throttle",
+            mode="lines",
+            line=dict(color="#8FD3FE", width=2),
+        )
+    )
 
     # --- Driver B ---
-    fig.add_trace(go.Scatter(
-        x=telB["Distance"],
-        y=telB["Brake"],
-        name=f"{driverB} Brake",
-        mode="lines",
-        line=dict(color="#FFB7D5", width=2)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=telB["Distance"],
+            y=telB["Brake"],
+            name=f"{driverB} Brake",
+            mode="lines",
+            line=dict(color="#FFB7D5", width=2),
+        )
+    )
 
-    fig.add_trace(go.Scatter(
-        x=telB["Distance"],
-        y=telB["Throttle"],
-        name=f"{driverB} Throttle",
-        mode="lines",
-        line=dict(color="#FFDD94", width=2)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=telB["Distance"],
+            y=telB["Throttle"],
+            name=f"{driverB} Throttle",
+            mode="lines",
+            line=dict(color="#FFDD94", width=2),
+        )
+    )
 
     fig = dark_layout(fig, f"Brake & Throttle – {driverA} vs {driverB}")
     fig.update_xaxes(title_text="Distance (m)")
@@ -167,7 +181,7 @@ def plot_gear_usage(tel, driver):
         names=gear_counts.index,
         hole=0.55,
         title=f"Gear Usage – {driver}",
-        color_discrete_sequence=PASTEL_COLORS
+        color_discrete_sequence=PASTEL_COLORS,
     )
 
     fig = dark_layout(fig)
@@ -178,13 +192,14 @@ def plot_gear_usage(tel, driver):
 # 6) APEX SPEED DISTRIBUTION – DONUT
 # -------------------------------------------------------
 def plot_apex_speed_share(df):
-    if df is None or df.empty: return
+    if df is None or df.empty:
+        return
 
     plot_df = df.copy()
     plot_df["Faster_Driver"] = plot_df["Delta_ApexSpeed"].apply(
         lambda x: "Driver A Faster" if x > 0 else "Driver B Faster"
     )
-    
+
     counts = plot_df["Faster_Driver"].value_counts().reset_index()
     counts.columns = ["Driver", "Count"]
 
@@ -194,7 +209,7 @@ def plot_apex_speed_share(df):
         names="Driver",
         hole=0.55,
         title="Dominance: Who was faster in more corners?",
-        color_discrete_sequence=["#A48FFF", "#FFB7D5"]
+        color_discrete_sequence=["#A48FFF", "#FFB7D5"],
     )
 
     fig = dark_layout(fig)

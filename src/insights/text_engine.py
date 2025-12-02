@@ -1,12 +1,13 @@
 import pandas as pd
 
+
 def severity_level(delta, thresholds=(1.0, 3.0)):
     """
     Return severity label based on delta magnitude.
     thresholds: (low, high)
     """
     low, high = thresholds
-    
+
     if abs(delta) < low:
         return "minor"
     elif abs(delta) < high:
@@ -26,9 +27,9 @@ def generate_corner_text_insights(df: pd.DataFrame, driver_a: str, driver_b: str
     # Score to rank importance of each corner
     # Exit Speed is the most valuable (affects straight)
     df["ImpactScore"] = (
-        df["Delta_ExitSpeed"].abs() * 2.0 +
-        df["Delta_ApexSpeed"].abs() * 1.5 +
-        df["Delta_EntrySpeed"].abs() * 1.0
+        df["Delta_ExitSpeed"].abs() * 2.0
+        + df["Delta_ApexSpeed"].abs() * 1.5
+        + df["Delta_EntrySpeed"].abs() * 1.0
     )
 
     # Sort by most important differences (descending)
@@ -37,10 +38,10 @@ def generate_corner_text_insights(df: pd.DataFrame, driver_a: str, driver_b: str
     for _, row in df.iterrows():
         c = int(row["Corner"])
 
-        apex_delta   = row["Delta_ApexSpeed"]
-        exit_delta   = row["Delta_ExitSpeed"]
-        entry_delta  = row["Delta_EntrySpeed"]
-        brake_delta  = row["Delta_AvgBrake"]
+        apex_delta = row["Delta_ApexSpeed"]
+        exit_delta = row["Delta_ExitSpeed"]
+        entry_delta = row["Delta_EntrySpeed"]
+        brake_delta = row["Delta_AvgBrake"]
         throttle_low = row["Delta_ThrottleBelow30Pct"]
 
         line = f"Corner {c}: "
@@ -48,9 +49,13 @@ def generate_corner_text_insights(df: pd.DataFrame, driver_a: str, driver_b: str
         # 1. Apex Speed
         sev = severity_level(apex_delta)
         if apex_delta > 1:
-            line += f"{driver_a} carries more apex speed (+{apex_delta:.1f} km/h, {sev}). "
+            line += (
+                f"{driver_a} carries more apex speed (+{apex_delta:.1f} km/h, {sev}). "
+            )
         elif apex_delta < -1:
-            line += f"{driver_b} is faster at the apex (+{-apex_delta:.1f} km/h, {sev}). "
+            line += (
+                f"{driver_b} is faster at the apex (+{-apex_delta:.1f} km/h, {sev}). "
+            )
         else:
             line += "Apex speed is similar. "
 
@@ -84,6 +89,8 @@ def generate_corner_text_insights(df: pd.DataFrame, driver_a: str, driver_b: str
         insights.append(line.strip())
 
     return insights
+
+
 def add_time_loss_to_text(df: pd.DataFrame, driver_a: str, driver_b: str):
     """
     Adds time loss information to the text insights.
@@ -100,7 +107,7 @@ def add_time_loss_to_text(df: pd.DataFrame, driver_a: str, driver_b: str):
             text = f"In Corner {c}, {driver_b} loses ~{abs(loss):.2f}s to {driver_a}."
         else:
             text = f"Corner {c}: No meaningful time difference."
-        
+
         texts.append(text)
 
     return texts

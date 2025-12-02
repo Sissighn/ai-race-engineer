@@ -1,7 +1,9 @@
 import streamlit as st
 
+
 def apply_custom_theme():
-   st.markdown("""
+    st.markdown(
+        """
 <style>
 
 @import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap');
@@ -134,4 +136,6 @@ table tr:hover td {
 }
 
 </style>
-""", unsafe_allow_html=True)
+""",
+        unsafe_allow_html=True,
+    )

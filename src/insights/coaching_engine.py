@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def coaching_suggestions(df: pd.DataFrame, driver_a: str, driver_b: str):
     """
     Generate automatic improvement suggestions based on:
@@ -12,16 +13,16 @@ def coaching_suggestions(df: pd.DataFrame, driver_a: str, driver_b: str):
 
     for _, row in df.iterrows():
         c = int(row["Corner"])
-        loss = row["TimeLoss"]   # positive = Aahead, negative = B ahead
+        loss = row["TimeLoss"]  # positive = Aahead, negative = B ahead
 
         entry = row["Delta_EntrySpeed"]
-        apex  = row["Delta_ApexSpeed"]
-        exit  = row["Delta_ExitSpeed"]
+        apex = row["Delta_ApexSpeed"]
+        exit = row["Delta_ExitSpeed"]
         brake = row["Delta_AvgBrake"]
         throt = row["Delta_ThrottleBelow30Pct"]
 
         # Determine who needs advice
-        if loss < 0:  
+        if loss < 0:
             losing_driver = driver_a
             winning_driver = driver_b
         elif loss > 0:

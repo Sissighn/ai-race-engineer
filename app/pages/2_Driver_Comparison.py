@@ -23,18 +23,19 @@ from app.components.plots import (
     plot_speed_profile,
     plot_brake_throttle,
     plot_gear_usage,
-    plot_apex_speed_share
+    plot_apex_speed_share,
 )
 from app.components.track_map import plot_track_map
-from app.components.advanced_plots.plot_delta_lap import compute_delta_lap, plot_delta_lap
-
-from src.data.load_data import (
-    load_session,
-    load_telemetry
+from app.components.advanced_plots.plot_delta_lap import (
+    compute_delta_lap,
+    plot_delta_lap,
 )
+
+from src.data.load_data import load_session, load_telemetry
 from src.data.compare import compare_drivers_corner_level, sync_telemetry
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
 from src.insights.coaching_engine import coaching_suggestions
+
 
 # -------------------------------------------------------
 # UTILS — RESET CACHE
@@ -44,6 +45,7 @@ def reset_cache():
     for k in keys:
         if k in st.session_state:
             st.session_state[k] = None
+
 
 # -------------------------------------------------------
 # PAGE CONFIG
@@ -73,10 +75,28 @@ with col1:
     year = st.selectbox("Year", [2025, 2024, 2023, 2022, 2021])
 
 TRACKS = [
-    "Bahrain", "Jeddah", "Melbourne", "Imola", "Miami", "Monaco",
-    "Barcelona", "Montreal", "Spielberg", "Silverstone", "Hungaroring",
-    "Spa", "Zandvoort", "Monza", "Singapore", "Suzuka", "Lusail",
-    "Austin", "Mexico City", "Sao Paulo", "Las Vegas", "Abu Dhabi"
+    "Bahrain",
+    "Jeddah",
+    "Melbourne",
+    "Imola",
+    "Miami",
+    "Monaco",
+    "Barcelona",
+    "Montreal",
+    "Spielberg",
+    "Silverstone",
+    "Hungaroring",
+    "Spa",
+    "Zandvoort",
+    "Monza",
+    "Singapore",
+    "Suzuka",
+    "Lusail",
+    "Austin",
+    "Mexico City",
+    "Sao Paulo",
+    "Las Vegas",
+    "Abu Dhabi",
 ]
 
 with col2:
@@ -109,8 +129,10 @@ if st.button("Load session"):
 
         driver_map = {}
         # Sicherheitscheck, falls 'laps' noch nicht geladen ist
-        unique_drivers = sorted(session.laps["Driver"].unique()) if hasattr(session, "laps") else []
-        
+        unique_drivers = (
+            sorted(session.laps["Driver"].unique()) if hasattr(session, "laps") else []
+        )
+
         for code in unique_drivers:
             info = session.get_driver(code)
             fn = info.get("FirstName", info.get("given_name", ""))
@@ -133,13 +155,19 @@ if st.button("Load session"):
 # -------------------------------------------------------
 if st.session_state.get("drivers_full"):
 
-    st.markdown("<h2 class='section-title'>Driver Selection</h2>", unsafe_allow_html=True)
+    st.markdown(
+        "<h2 class='section-title'>Driver Selection</h2>", unsafe_allow_html=True
+    )
 
     colA, colB = st.columns(2)
     with colA:
-        driverA_full = st.selectbox("Driver A", st.session_state["drivers_full"], key="drvA")
+        driverA_full = st.selectbox(
+            "Driver A", st.session_state["drivers_full"], key="drvA"
+        )
     with colB:
-        driverB_full = st.selectbox("Driver B", st.session_state["drivers_full"], key="drvB")
+        driverB_full = st.selectbox(
+            "Driver B", st.session_state["drivers_full"], key="drvB"
+        )
 
     if st.button("Compare drivers"):
         try:
@@ -192,27 +220,31 @@ if st.session_state.get("compare_result"):
         # FIX: Hier jetzt GlowCard statt manuellem HTML nutzen
         c1, c2, c3 = st.columns(3)
         with c1:
-             GlowCard.render("Total Time Delta", f"{total_delta:.2f}s")
+            GlowCard.render("Total Time Delta", f"{total_delta:.2f}s")
         with c2:
-             GlowCard.render("Best Corners", "See charts")
+            GlowCard.render("Best Corners", "See charts")
         with c3:
-             GlowCard.render("Worst Corners", "See charts")
+            GlowCard.render("Worst Corners", "See charts")
 
         st.markdown("<h3>Time Loss per Corner</h3>", unsafe_allow_html=True)
         plot_time_loss_bar(tl)
 
         st.markdown("<h3>Speed Delta (Apex & Exit)</h3>", unsafe_allow_html=True)
         plot_speed_deltas(tl, driverA, driverB)
-        
+
         st.markdown("<h3>Apex Speed Share</h3>", unsafe_allow_html=True)
         plot_apex_speed_share(tl)
 
     # --- Inputs ---
     with tab_inputs:
-        st.markdown("<h2 class='section-title'>Driver Inputs</h2>", unsafe_allow_html=True)
+        st.markdown(
+            "<h2 class='section-title'>Driver Inputs</h2>", unsafe_allow_html=True
+        )
         ctm1, ctm2 = st.columns(2)
-        with ctm1: plot_track_map(session, driverA, track)
-        with ctm2: plot_track_map(session, driverB, track)
+        with ctm1:
+            plot_track_map(session, driverA, track)
+        with ctm2:
+            plot_track_map(session, driverB, track)
 
         plot_speed_profile(telA, telB, driverA, driverB)
         plot_brake_throttle(telA, telB, driverA, driverB)
@@ -221,13 +253,18 @@ if st.session_state.get("compare_result"):
 
     # --- Corners ---
     with tab_corners:
-        st.markdown("<h2 class='section-title'>Corner-by-Corner Data</h2>", unsafe_allow_html=True)
-        
+        st.markdown(
+            "<h2 class='section-title'>Corner-by-Corner Data</h2>",
+            unsafe_allow_html=True,
+        )
+
         st.dataframe(tl, width="stretch")
 
     # --- Coaching ---
     with tab_coaching:
-        st.markdown("<h2 class='section-title'>AI Coaching</h2>", unsafe_allow_html=True)
+        st.markdown(
+            "<h2 class='section-title'>AI Coaching</h2>", unsafe_allow_html=True
+        )
         suggestions = coaching_suggestions(tl, driverA, driverB)
         if not suggestions:
             st.info("No significant weaknesses found.")
@@ -239,8 +276,12 @@ if st.session_state.get("compare_result"):
     st.markdown("<h3>Delta Lap Overlay</h3>", unsafe_allow_html=True)
     try:
         tel_sync = sync_telemetry(telA, telB)
-        dfA = tel_sync.rename(columns={"Speed_1": "Speed_A", "Time_1": "Time_A"})[["Distance", "Speed_A", "Time_A"]]
-        dfB = tel_sync.rename(columns={"Speed_2": "Speed_B", "Time_2": "Time_B"})[["Distance", "Speed_B", "Time_B"]]
+        dfA = tel_sync.rename(columns={"Speed_1": "Speed_A", "Time_1": "Time_A"})[
+            ["Distance", "Speed_A", "Time_A"]
+        ]
+        dfB = tel_sync.rename(columns={"Speed_2": "Speed_B", "Time_2": "Time_B"})[
+            ["Distance", "Speed_B", "Time_B"]
+        ]
         delta_df = compute_delta_lap(dfA, dfB)
         plot_delta_lap(delta_df, driverA, driverB)
     except Exception as e:

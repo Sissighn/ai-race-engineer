@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 class GlowCard:
     """
     Robust 'Sandwich' Glow Effect.
@@ -9,7 +10,8 @@ class GlowCard:
     @staticmethod
     def _inject_code():
         # Inject CSS and JS once
-        st.markdown("""
+        st.markdown(
+            """
         <style>
             /* --- STANDARD CARD (Small/Medium) --- */
             .glow-card-wrapper {
@@ -110,17 +112,22 @@ class GlowCard:
             window.f1GlowScriptLoaded = true;
         })();
         </script>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     @staticmethod
     def render(title, value):
         GlowCard._inject_code()
-        
-        st.markdown(f"""
+
+        st.markdown(
+            f"""
         <div class="glow-card-wrapper">
             <div class="glow-card-content">
                 <div class="gc-title">{title}</div>
                 <div class="gc-value">{value}</div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )

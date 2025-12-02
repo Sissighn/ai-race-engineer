@@ -2,8 +2,9 @@ import streamlit as st
 import base64
 import os
 
+
 # -----------------------------------------------------------------------------------
-# LOAD LOGO AS BASE64 
+# LOAD LOGO AS BASE64
 # -----------------------------------------------------------------------------------
 def load_logo_base64(path):
     with open(path, "rb") as f:
@@ -19,11 +20,11 @@ def navbar():
     else:
         logo_base64 = None  # fallback
 
-
     # -----------------------------------------------------------------------------------
     # CSS
     # -----------------------------------------------------------------------------------
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Science+Gothic:wght@400;700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -116,8 +117,9 @@ def navbar():
         }
     }
     </style>
-    """, unsafe_allow_html=True)
-
+    """,
+        unsafe_allow_html=True,
+    )
 
     # -----------------------------------------------------------------------------------
     # NAVBAR HTML
@@ -133,12 +135,13 @@ def navbar():
                     <div class="navBrand">AI Race Engineer</div>
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
         else:
             # fallback: no logo found
-            st.markdown('<div class="navBrand">AI Race Engineer</div>', unsafe_allow_html=True)
-
+            st.markdown(
+                '<div class="navBrand">AI Race Engineer</div>', unsafe_allow_html=True
+            )
 
     with col_spacer:
         st.empty()
@@ -155,4 +158,4 @@ def navbar():
             if st.button("Drivers", key="nav_driver"):
                 st.switch_page("pages/2_Driver_Comparison.py")
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
