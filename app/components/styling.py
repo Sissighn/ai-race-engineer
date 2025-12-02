@@ -11,7 +11,17 @@ html, body, [class*="block-container"] {
     color: #FFFFFF !important;
     font-optical-sizing: auto;
 }
+               
+header[data-testid="stHeader"] {
+        visibility: hidden !important;
+        height: 0px !important;
+    }
+               
+[data-testid="stSidebar"] {
+        display: none !important;
+    }
 
+               
 /* ------------------------------------
    SECTION TITLES
 ------------------------------------ */

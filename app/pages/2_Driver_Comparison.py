@@ -53,15 +53,6 @@ st.set_page_config(
     layout="wide",
 )
 
-# Hide Streamlit sidebar
-st.markdown("""
-<style>
-[data-testid="stSidebar"] { display:none; }
-header {visibility:hidden;}
-</style>
-""", unsafe_allow_html=True)
-
-# Theme laden (für konsistenten Look & Glow CSS)
 apply_custom_theme()
 
 navbar()
@@ -233,7 +224,7 @@ if st.session_state.get("compare_result"):
         st.markdown("<h2 class='section-title'>Corner-by-Corner Data</h2>", unsafe_allow_html=True)
         
         st.dataframe(tl, width="stretch")
-        
+
     # --- Coaching ---
     with tab_coaching:
         st.markdown("<h2 class='section-title'>AI Coaching</h2>", unsafe_allow_html=True)
