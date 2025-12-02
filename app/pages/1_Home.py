@@ -50,16 +50,6 @@ load_css()
 navbar()
 st.markdown("<div class='main-content'>", unsafe_allow_html=True)
 
-
-# ------------------------------------
-# Helper Methods
-# ------------------------------------
-# Hier nur noch Caching Logik, keine HTML Generierung mehr
-@st.cache_resource
-def load_event_results(year, event_key):
-    return get_season_results(year, event_key)
-
-
 # ------------------------------------
 # Logic: Load Data & Sessions
 # ------------------------------------
