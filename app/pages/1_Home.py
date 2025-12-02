@@ -17,6 +17,8 @@ if project_root not in sys.path:
 from app.components.navbar import navbar
 from app.components.glow_card import GlowCard
 from src.data.latest_session import get_latest_sessions, get_season_results
+from app.components.styling import apply_custom_theme
+from app.components.results_view import render_f1_table
 
 @st.cache_resource
 def load_event_results(year, event_key):
@@ -40,196 +42,21 @@ header {visibility:hidden;}
 </style>
 """, unsafe_allow_html=True)
 
+apply_custom_theme()
+
 navbar()
 st.markdown("<div class='main-content'>", unsafe_allow_html=True)
 
+# ------------------------------------
+# Helper Methods
+# ------------------------------------
+# Hier nur noch Caching Logik, keine HTML Generierung mehr
+@st.cache_resource
+def load_event_results(year, event_key):
+    return get_season_results(year, event_key)
 
 # ------------------------------------
-# DARK THEME GLOBAL CSS (F1 STYLE)
-# ------------------------------------
-st.markdown("""
-<style>
-
-@import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400..900&family=Playfair:ital,opsz,wght@0,5..1200,300..900;1,5..1200,300..900&display=swap');
-
-html, body, [class*="block-container"] {
-    background-color: #191919 !important;
-    color: #FFFFFF !important;
-    font-optical-sizing: auto;
-}
-
-/* ------------------------------------
-   SECTION TITLES
------------------------------------- */
-.section-title {
-    font-size: 1.6rem;
-    font-weight: 700;
-    font-family: 'Tektur', sans-serif !important;
-    font-optical-sizing: auto;
-    font-variation-settings: "wdth" 100;
-    margin-top: 1.2rem;
-}
-
-.main-content h1,
-.main-content h2,
-.main-content h3,
-.main-content h4,
-.main-content h5,
-.main-content h6 {
-    font-family: 'Tektur', sans-serif !important;
-    font-optical-sizing: auto !important;
-    font-variation-settings: "wdth" 100 !important;
-    font-weight: 700 !important;
-}
-
-/* ------------------------------------
-   TABLE STYLING
-   (Note: The wrapper is now handled by GlowCard classes, 
-    we only style the inner table here)
------------------------------------- */
-
-/* Ensure the table scrolls if too wide */
-.table-responsive {
-    overflow-x: auto;
-    width: 100%;
-}
-
-table {
-    width: 100%;
-    min-width: 400px;
-    border-collapse: collapse;
-}
-
-table th {
-    background: #161616 !important;
-    color: #FFFFFF !important;
-    font-weight: 700 !important;
-    border-bottom: 2px solid #7d0e0e !important;
-    text-align: left !important;
-    padding: 10px 8px !important;
-    font-family: 'Tektur', sans-serif !important;
-}
-
-table td {
-    background: #141414 !important;
-    padding: 8px 8px !important;
-    border-bottom: 1px solid #222 !important;
-    font-family: 'Playfair', serif !important;
-}
-
-table tr:hover td {
-    background: #1E1E1E !important;
-}
-
-/* ------------------------------------
-   MISC
------------------------------------- */
-.center {
-    display: flex;
-    justify-content: center;
-}
-
-.stButton > button {
-    background-color: #7d0e0e !important;
-    color: #FFFFFF !important;
-    border: none !important;
-    padding: 10px 24px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-}
-
-.stButton > button:hover {
-    background-color: #8e1f1f !important;
-    box-shadow: 0px 0px 15px rgba(211, 0, 0, 0.4) !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-# ------------------------------------
-# Helpers
-# ------------------------------------
-
-def clean_position(num):
-    try:
-        return int(float(num))
-    except:
-        return num
-
-# Convert F1 time format
-def format_f1_time(raw):
-    """
-    Convert '0 days 00:25:09.054000' → '25:09.054'
-    """
-    text = str(raw)
-
-    match = re.search(r'(\d+ days )?(\d+):(\d+):(\d+\.\d+)', text)
-    if not match:
-        return text
-
-    hours = int(match.group(2))
-    mins = int(match.group(3))
-    secs = float(match.group(4))
-
-    total_mins = hours * 60 + mins
-    return f"{total_mins}:{secs:06.3f}"
-
-
-def render_f1_table(df, title):
-    """
-    Renders a dataframe as an HTML table wrapped in the 
-    GlowCard structure. Uses 'glow-large' for better visibility on big elements.
-    """
-    # 1. Handle Empty State
-    if df is None or df.empty:
-        # ADDED CLASS: glow-large
-        return f"""
-        <div class="glow-card-wrapper glow-large" style="max-width: 900px; margin: 10px auto;">
-            <div class="glow-card-content">
-                <h3 style="margin-top:0;">{title}</h3>
-                <p style="color:#AAA;">No data yet.</p>
-            </div>
-        </div>
-        """
-
-    df = df.copy()
-
-    # 2. Clean Data (Same as before)
-    drop_cols = ["Status", "Session", "EventName", "Event", "Season", "Milliseconds"]
-    for c in drop_cols:
-        if c in df.columns:
-            df = df.drop(columns=c)
-
-    if "Position" in df.columns:
-        df["Position"] = df["Position"].apply(clean_position)
-
-    if "Time" in df.columns:
-        df["Time"] = df["Time"].apply(format_f1_time)
-
-    # 3. Create HTML Table
-    html_table = df.to_html(
-        index=False,
-        classes="compact",
-        border=0
-    )
-
-    # 4. Wrap with GLOW-LARGE
-    # ADDED CLASS: glow-large
-    return f"""
-    <div class="glow-card-wrapper glow-large" style="width: 100%; max-width: 900px; margin: 10px auto;">
-        <div class="glow-card-content" style="padding: 20px;">
-            <h3 style="margin-top:0; margin-bottom: 15px;">{title}</h3>
-            <div class="table-responsive">
-                {html_table}
-            </div>
-        </div>
-    </div>
-    """
-
-
-# ------------------------------------
-# Load Latest Event
+# Logic: Load Data & Sessions
 # ------------------------------------
 session_data = get_latest_sessions()
 
@@ -269,7 +96,7 @@ season_year = int(str(event_date)[:4])
 event_key = display_event["OfficialEventName"]
 
 # ------------------------------------
-# TOP SECTION
+# UI: Top Section
 # ------------------------------------
 st.markdown("<h2 class='section-title'>Latest Grand Prix</h2>", unsafe_allow_html=True)
 
@@ -287,7 +114,7 @@ with col2:
     GlowCard.render("Type", next_session_name)
 
 # ------------------------------------
-# RESULTS SECTION WITH NAVIGATION
+# Results Tables
 # ------------------------------------
 
 # Initialize session state for event navigation
