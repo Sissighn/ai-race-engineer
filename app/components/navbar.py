@@ -1,17 +1,33 @@
 import streamlit as st
+import base64
+import os
+
+# -----------------------------------------------------------------------------------
+# LOAD LOGO AS BASE64 
+# -----------------------------------------------------------------------------------
+def load_logo_base64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
 
 def navbar():
-    """
-    Custom navbar with working Streamlit page navigation
-    """
-    
-    # CSS Styling
+
+    # Load logo
+    logo_path = "app/assets/logo.png"
+    if os.path.exists(logo_path):
+        logo_base64 = load_logo_base64(logo_path)
+    else:
+        logo_base64 = None  # fallback
+
+
+    # -----------------------------------------------------------------------------------
+    # CSS
+    # -----------------------------------------------------------------------------------
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Science+Gothic:wght@400;700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-    /* Navbar container - fixed height */
     .customNavbar {
         background: #ffffff;
         width: 100%;
@@ -30,16 +46,27 @@ def navbar():
         max-height: 60px;
     }
 
-    .navBrand {
-    font-family: 'Science Gothic', sans-serif;
-    font-weight: 700;
-    font-size: 2.8rem;
-    letter-spacing: -0.5px;
-    color: #ffffff;
-    line-height: 1;
-    white-space: nowrap;
-}
+    / Logo + brand wrapper */
+    .navBrandWrapper {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
 
+    .navLogo {
+        height: 70px;
+        width: auto;
+    }
+
+    .navBrand {
+        font-family: 'Science Gothic', sans-serif;
+        font-weight: 700;
+        font-size: 2.7rem;
+        letter-spacing: -0.5px;
+        color: #FFFFFF;
+        line-height: 1;
+        white-space: nowrap;
+    }
 
     .navButtonContainer {
         display: flex;
@@ -48,17 +75,14 @@ def navbar():
         flex-shrink: 0;
     }
 
-    /* Remove default streamlit spacing */
     .block-container {
         padding-top: 2.0rem !important;
     }
 
-    /* Hide default streamlit button container */
     div[data-testid="column"] {
         padding: 0 !important;
     }
 
-    /* Style Streamlit buttons - compact size */
     div[data-testid="column"] > div > div > div > button {
         font-family: 'Inter', sans-serif !important;
         font-size: 0.9rem !important;
@@ -85,78 +109,49 @@ def navbar():
         box-shadow: 0px 3px 8px rgba(80, 60, 180, 0.12) !important;
     }
 
-    /* Responsive adjustments */
     @media screen and (max-width: 1024px) {
         .customNavbar {
             padding: 10px 20px;
-        }
-        
-        div[data-testid="column"] > div > div > div > button {
-            font-size: 0.85rem !important;
-            padding: 5px 12px !important;
-            min-width: 100px !important;
-        }
-    }
-        
-        div[data-testid="column"] > div > div > div > button {
-            font-size: 0.8rem !important;
-            padding: 5px 10px !important;
-            min-width: 90px !important;
-        }
-        
-        .navButtonContainer {
-            gap: 8px;
-        }
-    }
-
-    @media screen and (max-width: 480px) {
-        .customNavbar {
-            padding: 8px 12px;
-            min-height: 52px;
-            max-height: 52px;
-        }
-        
-        .navBrand {
-            font-size: 1.1rem;
-        }
-        
-        div[data-testid="column"] > div > div > div > button {
-            font-size: 0.75rem !important;
-            padding: 4px 8px !important;
-            min-width: 70px !important;
-            height: 32px !important;
-        }
-        
-        .navButtonContainer {
-            gap: 6px;
-        }
-        
-        .block-container {
-            padding-top: 5rem !important;
         }
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # Navbar structure with fixed layout
-    col_left, col_spacer, col_right = st.columns([5, 3, 2])
-    
+
+    # -----------------------------------------------------------------------------------
+    # NAVBAR HTML
+    # -----------------------------------------------------------------------------------
+    col_left, col_spacer, col_right = st.columns([6, 2, 2])
+
     with col_left:
-        st.markdown('<div class="navBrand">AI Race Engineer</div>', unsafe_allow_html=True)
-    
+        if logo_base64:
+            st.markdown(
+                f"""
+                <div class="navBrandWrapper">
+                    <img src="data:image/png;base64,{logo_base64}" class="navLogo">
+                    <div class="navBrand">AI Race Engineer</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            # fallback: no logo found
+            st.markdown('<div class="navBrand">AI Race Engineer</div>', unsafe_allow_html=True)
+
+
     with col_spacer:
-        st.empty()  # Spacer
-    
+        st.empty()
+
     with col_right:
         st.markdown('<div class="navButtonContainer">', unsafe_allow_html=True)
+
         btn_col1, btn_col2 = st.columns(2)
-        
         with btn_col1:
             if st.button("Home", key="nav_home"):
                 st.switch_page("pages/1_Home.py")
-        
+
         with btn_col2:
             if st.button("Drivers", key="nav_driver"):
                 st.switch_page("pages/2_Driver_Comparison.py")
-        
+
         st.markdown('</div>', unsafe_allow_html=True)
