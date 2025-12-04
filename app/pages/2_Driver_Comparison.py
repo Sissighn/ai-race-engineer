@@ -24,15 +24,14 @@ from app.components.plots import (
     plot_brake_throttle,
     plot_gear_usage,
     plot_apex_speed_share,
-    plot_driver_dna,  # Radar Chart
-    plot_corner_type_performance,  # Corner Type Bar Chart
+    plot_driver_dna,
+    plot_corner_type_performance,
 )
 from app.components.track_map import plot_track_map
 from app.components.advanced_plots.plot_delta_lap import (
     compute_delta_lap,
     plot_delta_lap,
 )
-
 from src.data.load_data import load_session, load_telemetry
 from src.data.compare import compare_drivers_corner_level, sync_telemetry
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
@@ -43,6 +42,8 @@ from src.insights.corner_utils import (
     aggregate_time_loss_by_type,
     get_corner_type_advice,
 )
+from src.insights.report_engine import generate_race_engineer_report
+from app.components.report_view import render_race_engineer_report
 
 
 # -------------------------------------------------------
@@ -368,11 +369,38 @@ if st.session_state.get("compare_result"):
     # -------------------------------------------------------
     with tab_coaching:
         st.markdown(
-            "<h2 class='section-title'>AI Coaching</h2>", unsafe_allow_html=True
+            "<h2 class='section-title'>AI Race Engineer</h2>", unsafe_allow_html=True
         )
-        suggestions = coaching_suggestions(tl, driverA, driverB)
-        if not suggestions:
-            st.info("No significant weaknesses found.")
+
+        # 1. GENERATE EXECUTIVE REPORT (Macro View)
+        if (
+            agg_types is not None
+            and tl_classified is not None
+            and not tl_classified.empty
+        ):
+            report_data = generate_race_engineer_report(
+                tl_classified,
+                agg_types,
+                driverA,
+                driverB,
+                track,
+            )
+            render_race_engineer_report(report_data)
         else:
+            st.warning("Insufficient data to generate Executive Report.")
+
+        st.markdown("---")
+
+        # 2. DETAILED CORNER ANALYSIS (Micro View - Deine alte Engine)
+        st.markdown("### Detailed Corner Analysis")
+        st.caption("Specific telemetry deviations per corner.")
+
+        suggestions = coaching_suggestions(tl, driverA, driverB)
+
+        if not suggestions:
+            st.info("No significant weaknesses found in detail analysis.")
+        else:
+            # Wir stylen die Liste etwas schöner als Expanders
             for s in suggestions:
-                st.markdown(f"- {s}")
+                with st.expander(f"{s.split(':')[0]}", expanded=False):
+                    st.write(s.split(":")[1] if ":" in s else s)

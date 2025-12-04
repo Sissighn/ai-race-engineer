@@ -1,0 +1,183 @@
+/* -------------------------------------------------------
+   FONTS
+------------------------------------------------------- */
+@import url("https://fonts.googleapis.com/css2?family=Science+Gothic:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
+/* -------------------------------------------------------
+   GLOBAL LINK RESET (Gegen blaue Linien & Rahmen)
+   Wir nutzen !important, um Streamlit Defaults zu überschreiben.
+------------------------------------------------------- */
+.f1-nav-container a,
+.f1-nav-container a:hover,
+.f1-nav-container a:focus,
+.f1-nav-container a:active,
+.f1-nav-container a:visited {
+  color: #ffffff !important;
+  text-decoration: none !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* -------------------------------------------------------
+   NAVBAR CONTAINER
+------------------------------------------------------- */
+.f1-nav-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 85px;
+  background-color: #191919;
+  border-bottom: 2px solid #7d0e0e; /* F1 Rot */
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.f1-nav-content {
+  width: 100%;
+  max-width: 1600px;
+  padding: 0 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+/* -------------------------------------------------------
+   BRANDING (LOGO + TITEL)
+------------------------------------------------------- */
+.f1-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+
+.nav-logo {
+  height: 50px !important; /* Originalgröße */
+  width: auto;
+  object-fit: contain;
+}
+
+.nav-title {
+  font-family: "Science Gothic", sans-serif;
+  font-weight: 700;
+  font-size: 2.7rem !important;
+  color: #ffffff !important;
+  letter-spacing: -1px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+/* -------------------------------------------------------
+   DESKTOP LINKS (RECHTS)
+------------------------------------------------------- */
+.f1-links {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.f1-links a {
+  font-family: "Inter", sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #ffffff !important;
+  padding: 10px 24px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  letter-spacing: 0.5px;
+}
+
+.f1-links a:hover {
+  background-color: #7d0e0e !important;
+  transform: translateY(-2px);
+}
+
+/* -------------------------------------------------------
+   MOBILE HAMBURGER (LOGIK)
+------------------------------------------------------- */
+#nav-toggle {
+  display: none;
+}
+
+.nav-burger {
+  display: none;
+  cursor: pointer;
+  padding: 10px;
+}
+
+.nav-burger div {
+  width: 35px;
+  height: 4px;
+  background-color: #ffffff;
+  margin: 6px 0;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+/* -------------------------------------------------------
+   RESPONSIVE (TABLET & MOBILE)
+------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .nav-title {
+    font-size: 2rem !important;
+  }
+  .nav-logo {
+    height: 40px !important;
+  }
+
+  .nav-burger {
+    display: block;
+  }
+
+  .f1-links {
+    position: absolute;
+    top: 85px; /* Unter der Navbar */
+    left: 0;
+    width: 100%;
+    background-color: #191919;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    max-height: 0; /* Eingeklappt */
+    overflow: hidden;
+    transition: max-height 0.4s ease-in-out;
+    border-bottom: 2px solid #7d0e0e;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  }
+
+  .f1-links a {
+    width: 100%;
+    text-align: center;
+    padding: 20px;
+    border-top: 1px solid #222;
+    border-radius: 0;
+    font-size: 1.2rem;
+  }
+
+  .f1-links a:hover {
+    transform: none;
+    background-color: #222 !important;
+    color: #7d0e0e !important;
+  }
+
+  #nav-toggle:checked ~ .f1-links {
+    max-height: 500px;
+  }
+}
+
+.block-container {
+  padding-top: 7rem !important;
+}
