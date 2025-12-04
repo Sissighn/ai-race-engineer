@@ -43,8 +43,10 @@ def navbar():
     <div class="f1-nav-content">
         <!-- LEFT: BRANDING -->
         <a href="Home" target="_self" class="f1-brand-group">
-            {logo_html}
-            <div class="nav-title">AI Race Engineer</div>
+            <div class="f1-brand-content" style="display: flex; align-items: center; gap: 15px;">
+                {logo_html}
+                <div class="nav-title">AI Race Engineer</div>
+            </div>
         </a>
         <!-- RIGHT: MOBILE TOGGLE -->
         <input type="checkbox" id="nav-toggle">
@@ -56,7 +58,7 @@ def navbar():
         <!-- RIGHT: LINKS -->
         <div class="f1-links">
             <a href="Home" target="_self">Home</a>
-            <a href="Driver_Comparison" target="_self">Drivers</a>
+            <a href="Driver_Comparison" target="_self">Driver Comparison</a>
         </div>
     </div>
  </div>

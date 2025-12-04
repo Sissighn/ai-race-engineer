@@ -32,7 +32,7 @@ from app.components.advanced_plots.plot_delta_lap import (
     compute_delta_lap,
     plot_delta_lap,
 )
-from src.data.load_data import load_session, load_telemetry
+from src.data.load_data import load_session, load_telemetry, get_tracks_for_year
 from src.data.compare import compare_drivers_corner_level, sync_telemetry
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
 from src.insights.coaching_engine import coaching_suggestions
@@ -65,16 +65,8 @@ st.set_page_config(
     layout="wide",
 )
 
-# Load global styling (removes header, sets fonts, etc.)
 load_css()
-
-# Render Navbar
 navbar()
-
-# -------------------------------------------------------
-# PAGE HEADER
-# -------------------------------------------------------
-st.markdown("<h1>Driver Comparison</h1>", unsafe_allow_html=True)
 
 # -------------------------------------------------------
 # SESSION SELECTION
@@ -84,37 +76,40 @@ st.markdown("<h2 class='section-title'>Session Selection</h2>", unsafe_allow_htm
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    year = st.selectbox("Year", [2025, 2024, 2023, 2022, 2021])
-
-TRACKS = [
-    "Bahrain",
-    "Jeddah",
-    "Melbourne",
-    "Imola",
-    "Miami",
-    "Monaco",
-    "Barcelona",
-    "Montreal",
-    "Spielberg",
-    "Silverstone",
-    "Hungaroring",
-    "Spa",
-    "Zandvoort",
-    "Monza",
-    "Singapore",
-    "Suzuka",
-    "Lusail",
-    "Austin",
-    "Mexico City",
-    "Sao Paulo",
-    "Las Vegas",
-    "Abu Dhabi",
-]
+    # Auswahl des Jahres triggert einen Rerun, damit die Streckenliste updated
+    year = st.selectbox(
+        "Year",
+        [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018],
+        index=1,  # Default zu 2024
+    )
 
 with col2:
-    # Default to Silverstone if available, else first track
-    idx = TRACKS.index("Silverstone") if "Silverstone" in TRACKS else 0
-    track = st.selectbox("Track", TRACKS, index=idx)
+    # 1. Dynamische Streckenliste laden
+    with st.spinner(f"Loading {year} Calendar..."):
+        tracks_for_year = get_tracks_for_year(year)
+
+    # 2. Fallback falls API offline ist (Offline Modus)
+    if not tracks_for_year:
+        tracks_for_year = [
+            "Silverstone",
+            "Monza",
+            "Monaco",
+            "Spa",
+            "Red Bull Ring",
+            "Suzuka",
+            "Interlagos",
+            "Bahrain",
+            "Barcelona",
+        ]
+        # Nur eine kleine Warnung, damit man weiß, dass es der Fallback ist
+        # st.caption("⚠️ Offline mode: Using fallback track list.")
+
+    # 3. Default Wert finden (Silverstone oder der erste Eintrag)
+    default_idx = 0
+    if "Silverstone" in tracks_for_year:
+        default_idx = tracks_for_year.index("Silverstone")
+
+    track = st.selectbox("Track", tracks_for_year, index=default_idx)
 
 with col3:
     session_type = st.selectbox("Session", ["Q", "R", "FP1", "FP2", "FP3"])
@@ -139,25 +134,36 @@ if st.button("Load session"):
     try:
         session = load_session(year, track, session_type)
 
-        driver_map = {}
-        # Robust check for drivers in the session
-        unique_drivers = (
-            sorted(session.laps["Driver"].unique()) if hasattr(session, "laps") else []
-        )
+        if session is None:
+            st.error("Could not load session data from FastF1.")
+        else:
+            driver_map = {}
+            # Robust check for drivers in the session
+            if hasattr(session, "laps"):
+                # session.laps kann leer sein, wenn Session noch nicht geladen
+                try:
+                    unique_drivers = sorted(session.laps["Driver"].unique())
+                except Exception:
+                    unique_drivers = []
+            else:
+                unique_drivers = []
 
-        for code in unique_drivers:
-            info = session.get_driver(code)
-            fn = info.get("FirstName", info.get("given_name", ""))
-            ln = info.get("LastName", info.get("family_name", ""))
-            full = f"{fn} {ln} ({code})"
-            driver_map[full] = code
+            for code in unique_drivers:
+                try:
+                    info = session.get_driver(code)
+                    fn = info.get("FirstName", info.get("given_name", ""))
+                    ln = info.get("LastName", info.get("family_name", ""))
+                    full = f"{fn} {ln} ({code})"
+                    driver_map[full] = code
+                except:
+                    driver_map[code] = code
 
-        st.session_state["session"] = session
-        st.session_state["drivers_full"] = list(driver_map.keys())
-        st.session_state["driver_map"] = driver_map
+            st.session_state["session"] = session
+            st.session_state["drivers_full"] = list(driver_map.keys())
+            st.session_state["driver_map"] = driver_map
 
-        st.success("Session loaded successfully.")
-        st.rerun()
+            st.success(f"Loaded: {year} {track} {session_type}")
+            st.rerun()
 
     except Exception as e:
         st.error(f"Error loading session: {e}")
