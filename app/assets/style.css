@@ -146,3 +146,70 @@ table tr:hover td {
   animation-fill-mode: both;
   will-change: transform, opacity;
 }
+
+/* ------------------------------------
+   NAVBAR
+------------------------------------ */
+.f1-nav-container {
+  background-color: #191919; /* Match body background */
+  padding: 10px 40px;
+  border-bottom: 1px solid #333333;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0; /* Ensure no extra margin */
+}
+
+.f1-nav-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1400px; /* A bit wider for modern screens */
+  margin: 0 auto;
+}
+
+.f1-brand-group {
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.f1-brand-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nav-title {
+  font-family: "Tektur", sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  color: #ffffff !important;
+}
+
+.f1-links {
+  display: flex;
+  gap: 30px;
+}
+
+.f1-links a {
+  font-family: "Playfair", serif !important;
+  color: #ffffff !important;
+  text-decoration: none;
+  font-size: 1.1rem;
+  padding-bottom: 5px;
+  border-bottom: 2px solid transparent;
+  transition:
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.f1-links a:hover {
+  color: #7d0e0e !important; /* Use existing red from buttons */
+  border-bottom-color: #7d0e0e !important;
+}
+
+/* This is to style the logo if it's an SVG */
+.f1-brand-content svg {
+  height: 40px;
+  width: auto;
+  fill: #ffffff;
+}

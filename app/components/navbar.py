@@ -1,68 +1,56 @@
-"""Navbar component for the Streamlit app."""
-
 import streamlit as st
 import base64
 import os
 
 
-def load_logo_base64(path):
-    """Loads image as base64 string."""
-    if not os.path.exists(path):
+class Navbar:
+    def __init__(self):
+        # Pfade absolut sicherstellen
+        self.script_path = os.path.dirname(os.path.abspath(__file__))
+        self.assets_path = os.path.normpath(
+            os.path.join(self.script_path, "..", "assets")
+        )
+
+    def _load_asset(self, filename):
+        path = os.path.join(self.assets_path, filename)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""
+
+    def _get_logo_b64(self):
+        path = os.path.join(self.assets_path, "logo.png")
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
         return None
-    with open(path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
 
+    def render(self):
+        html_tpl = self._load_asset("navbar.html")
+        css_content = self._load_asset("navbar.css")
+        logo_b64 = self._get_logo_b64()
 
-def load_navbar_css():
-    """Loads the external CSS file."""
-    css_path = os.path.join(os.path.dirname(__file__), "..", "assets", "navbar.css")
-    if os.path.exists(css_path):
-        with open(css_path) as f:
-            return f"<style>{f.read()}</style>"
-    return ""
+        logo_tag = (
+            f'<img src="data:image/png;base64,{logo_b64}" class="nav-logo">'
+            if logo_b64
+            else ""
+        )
+
+        # Platzhalter ersetzen
+        full_html = html_tpl.replace("{{CSS_STYLE}}", css_content).replace(
+            "{{LOGO_HTML}}", logo_tag
+        )
+
+        # DER FIX: Wir entfernen ALLES, was Streamlit als Markdown-Code interpretieren könnte.
+        # Wir machen aus dem HTML einen einzigen, langen String ohne Einrückungen.
+        clean_html = "".join([line.strip() for line in full_html.splitlines()])
+
+        # Nutze st.html (wenn vorhanden) oder st.markdown
+        if hasattr(st, "html"):
+            st.html(clean_html)
+        else:
+            st.markdown(clean_html, unsafe_allow_html=True)
 
 
 def navbar():
-    """Renders the navigation bar."""
-    # 1. Load assets
-    logo_path = "app/assets/logo.png"
-    logo_base64 = load_logo_base64(logo_path)
-    css_style = load_navbar_css()
-
-    # Prepare logo HTML
-    if logo_base64:
-        logo_html = f'<img src="data:image/png;base64,{logo_base64}" class="nav-logo">'
-    else:
-        logo_html = ""
-
-    # 2. Define HTML structure
-    # IMPORTANT: The string is not indented to avoid rendering issues.
-    html_content = f"""
-{css_style}
- <div class="f1-nav-container">
-    <div class="f1-nav-content">
-        <!-- LEFT: BRANDING -->
-        <a href="Home" target="_self" class="f1-brand-group">
-            <div class="f1-brand-content" style="display: flex; align-items: center; gap: 15px;">
-                {logo_html}
-                <div class="nav-title">AI Race Engineer</div>
-            </div>
-        </a>
-        <!-- RIGHT: MOBILE TOGGLE -->
-        <input type="checkbox" id="nav-toggle">
-        <label for="nav-toggle" class="nav-burger">
-            <div></div>
-            <div></div>
-            <div></div>
-        </label>
-        <!-- RIGHT: LINKS -->
-        <div class="f1-links">
-            <a href="Home" target="_self">Home</a>
-            <a href="Driver_Comparison" target="_self">Driver Comparison</a>
-        </div>
-    </div>
- </div>
-"""
-
-    # 3. Render component
-    st.markdown(html_content, unsafe_allow_html=True)
+    Navbar().render()
