@@ -1,5 +1,7 @@
 import os
 import shutil
+from typing import Any, Optional
+
 import fastf1
 import pandas as pd
 import numpy as np
@@ -44,7 +46,7 @@ except Exception as e:
 # -------------------------------------------------------
 
 
-def hash_session_id(session):
+def hash_session_id(session: Any) -> str:
     """Generate hash for session caching."""
     if not session:
         return "no_session"
@@ -106,7 +108,7 @@ def clear_specific_session_cache(year: int, grand_prix: str, session_type: str) 
 
 
 @st.cache_resource(show_spinner="Loading session data...")
-def load_session(year: int, grand_prix: str, session_type: str):
+def load_session(year: int, grand_prix: str, session_type: str) -> Any:
     """
     Load a FastF1 session with corruption handling and logging.
 
@@ -210,7 +212,7 @@ def load_session(year: int, grand_prix: str, session_type: str):
     show_spinner="Processing telemetry...",
     hash_funcs={fastf1.core.Session: hash_session_id},
 )
-def load_telemetry(session, driver_code: str):
+def load_telemetry(session: Any, driver_code: str) -> Optional[pd.DataFrame]:
     """
     Load and process telemetry for a specific driver's fastest lap.
 
@@ -282,7 +284,9 @@ def load_telemetry(session, driver_code: str):
     show_spinner="Loading position data...",
     hash_funcs={fastf1.core.Session: hash_session_id},
 )
-def load_telemetry_with_position(session, driver_code: str):
+def load_telemetry_with_position(
+    session: Any, driver_code: str
+) -> Optional[pd.DataFrame]:
     """
     Load telemetry with GPS position data for track mapping.
 
@@ -385,7 +389,7 @@ def load_telemetry_with_position(session, driver_code: str):
 
 
 @st.cache_data(show_spinner=False)
-def get_tracks_for_year(year: int):
+def get_tracks_for_year(year: int) -> list[str]:
     """
     Get list of tracks for a given championship year.
 
