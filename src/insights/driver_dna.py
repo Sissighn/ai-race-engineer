@@ -42,7 +42,10 @@ def calculate_driver_dna(telemetry: Optional[pd.DataFrame]) -> dict[str, float]:
 
         if not braking_zones.empty:
             top_decel = braking_zones["acc"].abs().quantile(0.95)
-            aggressiveness = np.interp(top_decel, [20, 65], [0, 100])
+            # acc is in km/h/s (Speed in km/h, timestep 0.1 s).
+            # F1 heavy braking: ~150–200 km/h/s (≈ 42–56 m/s², 4–6 G).
+            # [50, 200] km/h/s → [0, 100] score gives meaningful spread across drivers.
+            aggressiveness = np.interp(top_decel, [50, 200], [0, 100])
         else:
             aggressiveness = 50
             logger.warning("No braking zones found", **log_context)
