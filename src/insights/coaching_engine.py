@@ -91,16 +91,16 @@ def coaching_suggestions(df: pd.DataFrame, driver_a: str, driver_b: str) -> List
                 if abs(brake) > 0.1:
                     if losing_driver == driver_a and brake < 0:
                         line += "Increase brake pressure stability to shorten braking phase. "
-                    elif losing_driver == driver_b and brake > 0:
+                    elif losing_driver == driver_b and brake < 0:
                         line += (
                             "Optimize brake pressure modulation to avoid over-braking. "
                         )
 
                 # THROTTLE HESITATION
                 if abs(throttle) > 0.05:
-                    if losing_driver == driver_a and throttle < 0:
+                    if losing_driver == driver_a and throttle > 0:
                         line += "Reduce throttle hesitation at the exit. "
-                    elif losing_driver == driver_b and throttle > 0:
+                    elif losing_driver == driver_b and throttle < 0:
                         line += "Minimize coasting time after apex. "
 
                 if line.strip() != f"Corner {c} – {losing_driver}:":
