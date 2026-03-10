@@ -1,5 +1,9 @@
 import streamlit as st
 
+from src.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class GlowCard:
     """
@@ -10,8 +14,9 @@ class GlowCard:
     @staticmethod
     def _inject_code():
         # Inject CSS and JS once
-        st.markdown(
-            """
+        try:
+            st.markdown(
+                """
         <style>
             /* --- STANDARD CARD (Small/Medium) --- */
             .glow-card-wrapper {
@@ -113,15 +118,20 @@ class GlowCard:
         })();
         </script>
         """,
-            unsafe_allow_html=True,
-        )
+                unsafe_allow_html=True,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to inject GlowCard assets", error=str(e), exc_info=True
+            )
 
     @staticmethod
     def render(title, value):
         GlowCard._inject_code()
 
-        st.markdown(
-            f"""
+        try:
+            st.markdown(
+                f"""
         <div class="glow-card-wrapper">
             <div class="glow-card-content">
                 <div class="gc-title">{title}</div>
@@ -129,5 +139,7 @@ class GlowCard:
             </div>
         </div>
         """,
-            unsafe_allow_html=True,
-        )
+                unsafe_allow_html=True,
+            )
+        except Exception as e:
+            logger.error("Failed to render GlowCard", title=str(title), error=str(e))
