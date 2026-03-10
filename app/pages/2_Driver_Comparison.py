@@ -39,7 +39,7 @@ from src.data.load_data import load_session, load_telemetry, get_tracks_for_year
 from src.data.compare import compare_drivers_corner_level, sync_telemetry
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
 from src.insights.coaching_engine import coaching_suggestions
-from src.insights.driver_dna import compare_driver_dna
+from src.insights.driver_dna import get_driver_dna_comparison_df
 from src.insights.corner_utils import (
     add_corner_classification,
     aggregate_time_loss_by_type,
@@ -155,6 +155,20 @@ if st.button("Load session"):
         if session is None:
             st.error("Could not load session data from FastF1.")
         else:
+            # --- Detect which drivers have car telemetry available ---
+            # FastF1 silently leaves car_data empty for drivers whose
+            # telemetry the F1 API could not provide. We check upfront
+            # so we can warn the user in the dropdown instead of
+            # letting the comparison fail silently later.
+            drivers_with_cardata: set[str] = set()
+            if hasattr(session, "car_data") and session.car_data:
+                try:
+                    for drv_num, df in session.car_data.items():
+                        if df is not None and not df.empty:
+                            drivers_with_cardata.add(str(drv_num))
+                except Exception:
+                    pass  # If we can't read it, don't block anything
+
             driver_map = {}
             # Robust check for drivers in the session
             if hasattr(session, "laps"):
@@ -171,8 +185,16 @@ if st.button("Load session"):
                     info = session.get_driver(code)
                     fn = info.get("FirstName", info.get("given_name", ""))
                     ln = info.get("LastName", info.get("family_name", ""))
-                    full = f"{fn} {ln} ({code})"
-                    driver_map[full] = code
+                    drv_num = str(info.get("DriverNumber", ""))
+                    # Mark drivers without car telemetry
+                    has_tel = (
+                        not drivers_with_cardata  # couldn't determine → assume OK
+                        or drv_num in drivers_with_cardata
+                    )
+                    label = (
+                        f"{fn} {ln} ({code})" if has_tel else f"⚠️ {fn} {ln} ({code})"
+                    )
+                    driver_map[label] = code
                 except Exception as e:
                     logger.warning(
                         "Failed to resolve driver metadata",
@@ -184,6 +206,16 @@ if st.button("Load session"):
             st.session_state["session"] = session
             st.session_state["drivers_full"] = list(driver_map.keys())
             st.session_state["driver_map"] = driver_map
+
+            no_tel_drivers = [
+                code for label, code in driver_map.items() if label.startswith("⚠️")
+            ]
+            if no_tel_drivers:
+                st.warning(
+                    f"⚠️ No car telemetry available for: **{', '.join(no_tel_drivers)}** "
+                    "in this session (marked in the dropdowns below). "
+                    "These drivers cannot be compared."
+                )
 
             st.success(f"Loaded: {year} {track} {session_type}")
             st.rerun()
@@ -240,6 +272,19 @@ if st.session_state.get("drivers_full"):
                 telA = load_telemetry(session, driverA)
                 telB = load_telemetry(session, driverB)
 
+                if telA is None or telB is None:
+                    missing = []
+                    if telA is None:
+                        missing.append(driverA)
+                    if telB is None:
+                        missing.append(driverB)
+                    st.error(
+                        f"❌ No car telemetry data available for: **{', '.join(missing)}** "
+                        "in this session. The F1 data API does not provide car data for "
+                        "every driver in every session. Please select a different driver."
+                    )
+                    st.stop()
+
                 # Perform corner analysis
                 comp = compare_drivers_corner_level(session, driverA, driverB)
                 tl = estimate_time_loss_per_corner(comp, driverA, driverB)
@@ -266,6 +311,7 @@ if st.session_state.get("drivers_full"):
                 exc_info=True,
             )
             show_domain_error(e, fallback="Compare failed.", context="comparison")
+            st.caption(f"Details: `{type(e).__name__}: {e}`")
         except Exception as e:
             logger.error(
                 "Driver comparison failed",
@@ -310,20 +356,27 @@ if st.session_state.get("compare_result"):
         # --- DRIVER DNA ANALYSIS ---
         st.markdown("<h3>Driver Style Analysis (DNA)</h3>", unsafe_allow_html=True)
         try:
-            dna_df = compare_driver_dna(telA, telB, driverA, driverB)
+            dna_df = get_driver_dna_comparison_df(telA, telB, driverA, driverB)
 
-            # Layout: Radar Chart Left, Time Loss Bar Right
-            col_dna, col_loss = st.columns([1, 1])
-
-            with col_dna:
-                plot_driver_dna(dna_df, driverA, driverB, key="radar_chart_overview")
-                st.caption(
-                    f"Analysis based on telemetry patterns (Aggressiveness, Smoothness, Input Workload)."
+            if dna_df is None or dna_df.empty:
+                st.warning(
+                    "Driver DNA is unavailable for the selected drivers/session."
                 )
+            else:
+                # Layout: Radar Chart Left, Time Loss Bar Right
+                col_dna, col_loss = st.columns([1, 1])
 
-            with col_loss:
-                st.markdown("<b>Time Loss Distribution</b>", unsafe_allow_html=True)
-                plot_time_loss_bar(tl, key="time_loss_bar_overview")
+                with col_dna:
+                    plot_driver_dna(
+                        dna_df, driverA, driverB, key="radar_chart_overview"
+                    )
+                    st.caption(
+                        "Analysis based on telemetry patterns (Aggressiveness, Smoothness, Input Workload)."
+                    )
+
+                with col_loss:
+                    st.markdown("<b>Time Loss Distribution</b>", unsafe_allow_html=True)
+                    plot_time_loss_bar(tl, key="time_loss_bar_overview")
 
         except Exception as e:
             logger.error(
