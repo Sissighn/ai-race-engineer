@@ -69,10 +69,10 @@ def generate_race_engineer_report(
         gap = abs(total_delta)
 
         if total_delta > 0:
-            status = "behind"
-            headline = f"**{track_name} Analysis**: {driver_a} is **{gap:.3f}s {status}** {driver_b}."
-        else:
             status = "ahead"
+            headline = f"**{track_name} Analysis**: {driver_a} is **{gap:.3f}s {status}** of {driver_b}."
+        else:
+            status = "behind"
             headline = f"**{track_name} Analysis**: {driver_a} is **{gap:.3f}s {status}** {driver_b}."
 
         logger.debug(f"Report headline: {gap:.3f}s {status}", **log_context)
@@ -81,13 +81,14 @@ def generate_race_engineer_report(
         summary_lines = []
 
         # A. PROBLEM AREA (Where do we lose the most?)
-        losing_mask = tl_df["TimeLoss"] > 0
+        # Positive TimeLoss = driver_a gains; Negative = driver_a loses.
+        losing_mask = tl_df["TimeLoss"] < 0
         if losing_mask.any():
             loss_by_type = (
                 tl_df[losing_mask]
                 .groupby("CornerType")["TimeLoss"]
                 .sum()
-                .sort_values(ascending=False)
+                .sort_values(ascending=True)  # most negative (biggest loss) first
             )
 
             if not loss_by_type.empty:
@@ -95,8 +96,10 @@ def generate_race_engineer_report(
                 loss_val = loss_by_type.iloc[0]
 
                 problem_corners = tl_df[
-                    (tl_df["CornerType"] == worst_type) & (tl_df["TimeLoss"] > 0.05)
-                ].sort_values("TimeLoss", ascending=False)
+                    (tl_df["CornerType"] == worst_type) & (tl_df["TimeLoss"] < -0.05)
+                ].sort_values(
+                    "TimeLoss", ascending=True
+                )  # worst first
 
                 corner_nums = problem_corners["Corner"].astype(str).tolist()[:2]
                 corners_str = ", ".join([f"T{c}" for c in corner_nums])
@@ -111,7 +114,7 @@ def generate_race_engineer_report(
                     reason = f"traction deficit ({avg_exit_delta:.1f} km/h)"
 
                 summary_lines.append(
-                    f"🔴 **Major Deficit**: Losing {loss_val:.2f}s in **{worst_type} corners** (mostly {corners_str}) due to {reason}."
+                    f"🔴 **Major Deficit**: Losing {abs(loss_val):.2f}s in **{worst_type} corners** (mostly {corners_str}) due to {reason}."
                 )
 
         # B. OPPONENT STRENGTH
@@ -125,26 +128,27 @@ def generate_race_engineer_report(
             )
 
         # C. OUR STRENGTH
-        gaining_mask = tl_df["TimeLoss"] < 0
+        gaining_mask = tl_df["TimeLoss"] > 0  # positive = driver_a is faster
         if gaining_mask.any():
             gain_by_type = (
                 tl_df[gaining_mask]
                 .groupby("CornerType")["TimeLoss"]
                 .sum()
-                .sort_values(ascending=True)
+                .sort_values(ascending=False)  # largest gain first
             )
             if not gain_by_type.empty:
                 best_type = gain_by_type.index[0]
-                gain_val = abs(gain_by_type.iloc[0])
+                gain_val = gain_by_type.iloc[0]  # already positive
                 summary_lines.append(
-                    f"✅ **Strength**: {driver_a}'s main gain is in **{best_type} sections** (-{gain_val:.2f}s)."
+                    f"✅ **Strength**: {driver_a}'s main gain is in **{best_type} sections** (+{gain_val:.2f}s)."
                 )
 
         # 3. KEY FIX (High precision actionable advice)
-        worst_corner = tl_df.sort_values("TimeLoss", ascending=False).iloc[0]
+        # Sort ascending to get driver_a's WORST corner (most negative TimeLoss) first.
+        worst_corner = tl_df.sort_values("TimeLoss", ascending=True).iloc[0]
         key_fix = "Review consistency."
 
-        if worst_corner["TimeLoss"] > 0.05:
+        if worst_corner["TimeLoss"] < -0.05:
             c_fix = int(worst_corner["Corner"])
             d_entry = worst_corner.get("Delta_EntrySpeed", 0)
             d_apex = worst_corner.get("Delta_ApexSpeed", 0)
@@ -154,7 +158,7 @@ def generate_race_engineer_report(
             if d_entry < -5:
                 key_fix = f"🎯 **Key Fix T{c_fix}**: Brake 5-10m later. You are giving away {abs(d_entry):.0f} km/h on entry."
             elif d_apex < -3:
-                key_fix = f"🎯 **Key Fix T{c_fix}**: Release brake earlier. Target +{abs(d_apex):.0f} km/h apex speed to reduce {worst_corner['TimeLoss']:.2f}s loss."
+                key_fix = f"🎯 **Key Fix T{c_fix}**: Release brake earlier. Target +{abs(d_apex):.0f} km/h apex speed to recover {abs(worst_corner['TimeLoss']):.2f}s."
             elif d_exit < -3:
                 key_fix = f"🎯 **Key Fix T{c_fix}**: Sacrifice entry speed. Square the exit to match {driver_b}'s traction (+{abs(d_exit):.0f} km/h)."
 
