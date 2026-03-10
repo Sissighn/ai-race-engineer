@@ -18,7 +18,7 @@ PASTEL_COLORS = ["#A48FFF", "#FFB7D5", "#8FD3FE", "#FFDD94", "#C9F7C5", "#FDCFE8
 
 def _safe_plotly_chart(fig, key=None, context="plot"):
     try:
-        st.plotly_chart(fig, use_container_width=True, key=key)
+        st.plotly_chart(fig, width="stretch", key=key)
     except Exception as e:
         logger.error(
             "Failed to render plot", context=context, key=str(key), error=str(e)

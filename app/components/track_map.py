@@ -80,7 +80,7 @@ def show_track_outline_svg(track: str):
     )
 
     if os.path.exists(svg_path):
-        st.image(svg_path, use_container_width=True)
+        st.image(svg_path, width="stretch")
     else:
         logger.info("Track outline SVG not found", track=track, svg_path=svg_path)
         st.info(f"No SVG outline found for {track}")
