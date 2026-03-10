@@ -26,6 +26,7 @@ from app.utils.error_ui import DOMAIN_EXCEPTIONS, show_domain_error
 from src.data.compare import sync_telemetry
 from src.insights.driver_dna import get_driver_dna_comparison_df
 from src.logging import get_logger
+from src.models import ComparisonSessionState
 
 logger = get_logger(__name__)
 
@@ -35,17 +36,26 @@ def render_comparison_results(session_type: str, track: str) -> None:
         return
 
     data = st.session_state["compare_result"]
-    tl = data["tl"]
-    tel_a = data["telA"]
-    tel_b = data["telB"]
-    driver_a = data["driverA"]
-    driver_b = data["driverB"]
-    session = data["session"]
+    if isinstance(data, ComparisonSessionState):
+        tl = data.tl
+        tel_a = data.tel_a
+        tel_b = data.tel_b
+        driver_a = data.driver_a
+        driver_b = data.driver_b
+        session = data.session
+    else:
+        # Backward compatibility for pre-refactor session state payloads
+        tl = data["tl"]
+        tel_a = data["telA"]
+        tel_b = data["telB"]
+        driver_a = data["driverA"]
+        driver_b = data["driverB"]
+        session = data["session"]
 
     corner_analysis = build_corner_analysis(tl, driver_a=driver_a, driver_b=driver_b)
-    tl_classified = corner_analysis["tl_classified"]
-    agg_types = corner_analysis["agg_types"]
-    advice_list = corner_analysis["advice_list"]
+    tl_classified = corner_analysis.tl_classified
+    agg_types = corner_analysis.agg_types
+    advice_list = corner_analysis.advice_list
 
     tab_overview, tab_inputs, tab_corners, tab_coaching = st.tabs(
         ["Overview", "Driver Inputs", "Corners", "Coaching"]

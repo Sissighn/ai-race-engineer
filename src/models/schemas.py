@@ -46,3 +46,33 @@ class SeasonResultsPayload(BaseModel):
     SQ: Optional[pd.DataFrame] = None
     S: Optional[pd.DataFrame] = None
     R: Optional[pd.DataFrame] = None
+
+
+class ComparisonComputeResult(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    missing: list[str] = Field(default_factory=list)
+    tel_a: Optional[pd.DataFrame] = None
+    tel_b: Optional[pd.DataFrame] = None
+    comp: Optional[pd.DataFrame] = None
+    tl: Optional[pd.DataFrame] = None
+
+
+class ComparisonSessionState(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    session: object
+    driver_a: str
+    driver_b: str
+    tel_a: pd.DataFrame
+    tel_b: pd.DataFrame
+    comp: pd.DataFrame
+    tl: pd.DataFrame
+
+
+class CornerAnalysisPayload(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    tl_classified: Optional[pd.DataFrame] = None
+    agg_types: Optional[pd.DataFrame] = None
+    advice_list: list[str] = Field(default_factory=list)
