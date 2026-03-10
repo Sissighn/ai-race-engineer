@@ -1,6 +1,11 @@
 import streamlit as st
 
+from src.logging import get_logger
+
+logger = get_logger(__name__)
+
 # redirect immediately to Home page
+logger.info("App entrypoint loaded, redirecting to home")
 st.switch_page("pages/1_Home.py")
 st.markdown(
     """
