@@ -1,9 +1,10 @@
 from typing import Optional
 
-import fastf1
 import pandas as pd
 
 from src.data.latest_session import get_latest_sessions, get_season_results
+from src.infrastructure.fastf1 import get_event_schedule
+from src.models import HomeContextPayload
 
 _SESSION_COLS = [
     "Session1DateUtc",
@@ -18,7 +19,7 @@ def load_event_results(year: int, event_key: str) -> dict:
     return get_season_results(year, event_key)
 
 
-def get_home_context(year: Optional[int] = None) -> dict:
+def get_home_context(year: Optional[int] = None) -> HomeContextPayload:
     session_data = get_latest_sessions(year)
 
     events_df = session_data["events"]
@@ -35,19 +36,19 @@ def get_home_context(year: Optional[int] = None) -> dict:
     event_date = display_event["EventDate"]
     season_year = int(str(event_date)[:4])
 
-    return {
-        "events_df": events_df,
-        "latest_completed_idx": latest_completed_idx,
-        "next_session_name": next_session_name,
-        "next_session_time": next_session_time,
-        "display_event": display_event,
-        "season_year": season_year,
-        "event_key": display_event["OfficialEventName"],
-    }
+    return HomeContextPayload(
+        events_df=events_df,
+        latest_completed_idx=latest_completed_idx,
+        next_session_name=next_session_name,
+        next_session_time=next_session_time,
+        display_event=display_event,
+        season_year=season_year,
+        event_key=display_event["OfficialEventName"],
+    )
 
 
 def get_season_started_events(season_year: int) -> list:
-    all_events = fastf1.get_event_schedule(season_year, include_testing=False).copy()
+    all_events = get_event_schedule(season_year, include_testing=False).copy()
 
     now = pd.Timestamp.now(tz="UTC")
 

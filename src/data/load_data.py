@@ -12,6 +12,7 @@ from src.exceptions import (
     FastF1APIError,
 )
 from src.config import settings
+from src.infrastructure.fastf1 import get_session
 
 # ─────────────────────────────────────────────────────────────────────
 # LOGGING SETUP
@@ -131,7 +132,7 @@ def load_session(year: int, grand_prix: str, session_type: str) -> Any:
         logger.info("Loading session", **log_context)
 
         # 1. Get session object
-        session = fastf1.get_session(year, grand_prix, session_type)
+        session = get_session(year, grand_prix, session_type)
 
         # 2. Check if session is in the future
         now = (
@@ -170,7 +171,7 @@ def load_session(year: int, grand_prix: str, session_type: str) -> Any:
             try:
                 # Retry with cache disabled
                 fastf1.Cache.disable_cache()
-                session = fastf1.get_session(year, grand_prix, session_type)
+                session = get_session(year, grand_prix, session_type)
                 session.load()
                 fastf1.Cache.enable_cache(cache_path)
 
