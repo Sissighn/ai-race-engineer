@@ -152,6 +152,6 @@ streamlit run app/main.py
 
 ## License
 
-MIT License © 2025 Setayesh Golshan
+MIT License © 2026 Setayesh Golshan
 
 This project is unofficial and not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.
