@@ -10,6 +10,7 @@
 
 AI Race Engineer is a Formula 1 telemetry analysis platform that simulates the workflow of a race/performance engineer. It transforms raw telemetry into corner-level insights, time-loss diagnostics, driver-style profiling, and actionable coaching recommendations.
 
+![Driver Comparison](./docs/4.png)
 ---
 
 ## Current Project Status
@@ -34,6 +35,10 @@ This repository now includes:
 - Time loss estimation per corner
 - Delta lap comparison between two drivers
 - Speed, throttle, brake, gear, and track map visualizations
+
+![Driver Comparison](./docs/1.png)
+![Driver Comparison](./docs/2.png)
+![Driver Comparison](./docs/3.png)
 
 ### Coaching & Reporting
 
