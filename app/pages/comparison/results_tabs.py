@@ -24,7 +24,7 @@ from app.components.report_view import render_race_engineer_report
 from app.components.track_map import plot_track_map
 from app.utils.error_ui import DOMAIN_EXCEPTIONS, show_domain_error
 from src.data.compare import sync_telemetry
-from src.insights.driver_dna import get_driver_dna_comparison_df
+from src.domain.analysis.driver_dna import get_driver_dna_comparison_df
 from src.logging import get_logger
 from src.models import ComparisonSessionState
 
