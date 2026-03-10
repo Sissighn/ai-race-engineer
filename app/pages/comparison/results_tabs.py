@@ -1,5 +1,10 @@
 import streamlit as st
 
+from src.application.comparison_service import (
+    build_coaching_suggestions,
+    build_corner_analysis,
+    build_race_engineer_report,
+)
 from app.components.advanced_plots.plot_delta_lap import (
     compute_delta_lap,
     plot_delta_lap,
@@ -19,14 +24,7 @@ from app.components.report_view import render_race_engineer_report
 from app.components.track_map import plot_track_map
 from app.utils.error_ui import DOMAIN_EXCEPTIONS, show_domain_error
 from src.data.compare import sync_telemetry
-from src.insights.coaching_engine import coaching_suggestions
-from src.insights.corner_utils import (
-    add_corner_classification,
-    aggregate_time_loss_by_type,
-    get_corner_type_advice,
-)
 from src.insights.driver_dna import get_driver_dna_comparison_df
-from src.insights.report_engine import generate_race_engineer_report
 from src.logging import get_logger
 
 logger = get_logger(__name__)
@@ -44,8 +42,10 @@ def render_comparison_results(session_type: str, track: str) -> None:
     driver_b = data["driverB"]
     session = data["session"]
 
-    tl_classified = add_corner_classification(tl)
-    agg_types = aggregate_time_loss_by_type(tl_classified)
+    corner_analysis = build_corner_analysis(tl, driver_a=driver_a, driver_b=driver_b)
+    tl_classified = corner_analysis["tl_classified"]
+    agg_types = corner_analysis["agg_types"]
+    advice_list = corner_analysis["advice_list"]
 
     tab_overview, tab_inputs, tab_corners, tab_coaching = st.tabs(
         ["Overview", "Driver Inputs", "Corners", "Coaching"]
@@ -60,6 +60,7 @@ def render_comparison_results(session_type: str, track: str) -> None:
             driver_b=driver_b,
             session_type=session_type,
             agg_types=agg_types,
+            advice_list=advice_list,
         )
 
     with tab_inputs:
@@ -94,6 +95,7 @@ def _render_overview_tab(
     driver_b: str,
     session_type: str,
     agg_types,
+    advice_list: list[str],
 ) -> None:
     st.markdown("<h2 class='section-title'>Summary</h2>", unsafe_allow_html=True)
     total_delta = tl["TimeLoss"].sum()
@@ -143,7 +145,6 @@ def _render_overview_tab(
 
         with col_type_text:
             st.markdown("#### Engineering Insights")
-            advice_list = get_corner_type_advice(agg_types)
 
             if not advice_list:
                 st.info("No major corner type dominance found.")
@@ -229,35 +230,36 @@ def _render_coaching_tab(
         "<h2 class='section-title'>AI Race Engineer</h2>", unsafe_allow_html=True
     )
 
-    if agg_types is not None and tl_classified is not None and not tl_classified.empty:
-        try:
-            report_data = generate_race_engineer_report(
-                tl_classified,
-                agg_types,
-                driver_a,
-                driver_b,
-                track,
-            )
+    try:
+        report_data = build_race_engineer_report(
+            tl_classified,
+            agg_types,
+            driver_a,
+            driver_b,
+            track,
+        )
+
+        if report_data is not None:
             render_race_engineer_report(report_data)
-        except DOMAIN_EXCEPTIONS as e:
-            logger.error("Report generation failed", error=str(e), exc_info=True)
-            show_domain_error(
-                e,
-                fallback="Report could not be generated.",
-                context="comparison",
-            )
-        except Exception as e:
-            logger.error("Unexpected report error", error=str(e), exc_info=True)
-            st.warning("Report temporarily unavailable.")
-    else:
-        st.warning("Insufficient data to generate Executive Report.")
+        else:
+            st.warning("Insufficient data to generate Executive Report.")
+    except DOMAIN_EXCEPTIONS as e:
+        logger.error("Report generation failed", error=str(e), exc_info=True)
+        show_domain_error(
+            e,
+            fallback="Report could not be generated.",
+            context="comparison",
+        )
+    except Exception as e:
+        logger.error("Unexpected report error", error=str(e), exc_info=True)
+        st.warning("Report temporarily unavailable.")
 
     st.markdown("---")
     st.markdown("### Detailed Corner Analysis")
     st.caption("Specific telemetry deviations per corner.")
 
     try:
-        suggestions = coaching_suggestions(tl, driver_a, driver_b)
+        suggestions = build_coaching_suggestions(tl, driver_a, driver_b)
     except DOMAIN_EXCEPTIONS as e:
         logger.error("Coaching engine failed", error=str(e), exc_info=True)
         show_domain_error(
