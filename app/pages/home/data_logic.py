@@ -3,7 +3,10 @@ import pandas as pd
 import streamlit as st
 
 from app.utils.error_ui import DOMAIN_EXCEPTIONS, show_domain_error
-from src.data.latest_session import get_latest_sessions, get_season_results
+from src.data.latest_session import (
+    get_latest_sessions as get_latest_sessions_core,
+    get_season_results as get_season_results_core,
+)
 from src.logging import get_logger
 
 logger = get_logger(__name__)
@@ -20,7 +23,7 @@ _SESSION_COLS = [
 @st.cache_resource
 def load_event_results(year: int, event_key: str) -> dict:
     try:
-        return get_season_results(year, event_key)
+        return get_season_results_core(year, event_key)
     except DOMAIN_EXCEPTIONS as e:
         logger.error(
             "Failed to load event results (domain exception)",
@@ -41,9 +44,14 @@ def load_event_results(year: int, event_key: str) -> dict:
         return {}
 
 
+@st.cache_data(ttl=600, show_spinner="Loading F1 schedule...")
+def get_latest_sessions_cached(year: int | None = None) -> dict[str, object]:
+    return get_latest_sessions_core(year)
+
+
 def load_home_context() -> dict:
     try:
-        session_data = get_latest_sessions()
+        session_data = get_latest_sessions_cached()
         logger.info("Latest sessions loaded")
     except DOMAIN_EXCEPTIONS as e:
         logger.error(
