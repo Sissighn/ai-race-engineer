@@ -4,6 +4,8 @@ import numpy as np
 import sys
 import os
 
+from src.logging import get_logger
+
 # -------------------------------------------------------
 # FIX PYTHON PATH
 # -------------------------------------------------------
@@ -45,6 +47,8 @@ from src.insights.corner_utils import (
 from src.insights.report_engine import generate_race_engineer_report
 from app.components.report_view import render_race_engineer_report
 
+logger = get_logger(__name__)
+
 
 # -------------------------------------------------------
 # UTILS — RESET CACHE
@@ -55,6 +59,7 @@ def reset_cache():
     for k in keys:
         if k in st.session_state:
             st.session_state[k] = None
+    logger.info("Comparison cache reset")
 
 
 # -------------------------------------------------------
@@ -87,6 +92,7 @@ with col2:
     # 1. Dynamische Streckenliste laden
     with st.spinner(f"Loading {year} Calendar..."):
         tracks_for_year = get_tracks_for_year(year)
+        logger.debug("Tracks loaded", year=year, count=len(tracks_for_year or []))
 
     # 2. Fallback falls API offline ist (Offline Modus)
     if not tracks_for_year:
@@ -132,6 +138,9 @@ if st.session_state["last_selection"] != sel_tuple:
 # -------------------------------------------------------
 if st.button("Load session"):
     try:
+        logger.info(
+            "Loading session", year=year, track=track, session_type=session_type
+        )
         session = load_session(year, track, session_type)
 
         if session is None:
@@ -155,7 +164,12 @@ if st.button("Load session"):
                     ln = info.get("LastName", info.get("family_name", ""))
                     full = f"{fn} {ln} ({code})"
                     driver_map[full] = code
-                except:
+                except Exception as e:
+                    logger.warning(
+                        "Failed to resolve driver metadata",
+                        driver_code=code,
+                        error=str(e),
+                    )
                     driver_map[code] = code
 
             st.session_state["session"] = session
@@ -166,6 +180,14 @@ if st.button("Load session"):
             st.rerun()
 
     except Exception as e:
+        logger.error(
+            "Session load failed",
+            year=year,
+            track=track,
+            session_type=session_type,
+            error=str(e),
+            exc_info=True,
+        )
         st.error(f"Error loading session: {e}")
 
 # -------------------------------------------------------
@@ -192,6 +214,7 @@ if st.session_state.get("drivers_full"):
             driverA = st.session_state["driver_map"][driverA_full]
             driverB = st.session_state["driver_map"][driverB_full]
             session = st.session_state["session"]
+            logger.info("Comparing drivers", driver_a=driverA, driver_b=driverB)
 
             with st.spinner("Analyzing Telemetry..."):
                 # Load telemetry data
@@ -212,9 +235,15 @@ if st.session_state.get("drivers_full"):
                 "comp": comp,
                 "tl": tl,
             }
+            logger.info("Comparison complete", driver_a=driverA, driver_b=driverB)
             st.rerun()
 
         except Exception as e:
+            logger.error(
+                "Driver comparison failed",
+                error=str(e),
+                exc_info=True,
+            )
             st.error(f"Compare failed: {e}")
 
 # -------------------------------------------------------
@@ -269,6 +298,12 @@ if st.session_state.get("compare_result"):
                 plot_time_loss_bar(tl, key="time_loss_bar_overview")
 
         except Exception as e:
+            logger.error(
+                "Driver DNA calculation failed",
+                driver_a=driverA,
+                driver_b=driverB,
+                error=str(e),
+            )
             st.error(f"Could not calculate Driver DNA: {e}")
 
         st.markdown("---")
@@ -334,6 +369,12 @@ if st.session_state.get("compare_result"):
         delta_df = compute_delta_lap(dfA, dfB)
         plot_delta_lap(delta_df, driverA, driverB)
     except Exception as e:
+        logger.warning(
+            "Delta lap computation failed",
+            driver_a=driverA,
+            driver_b=driverB,
+            error=str(e),
+        )
         st.warning(f"Could not compute Delta Lap: {e}")
 
     # -------------------------------------------------------
