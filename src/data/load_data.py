@@ -5,25 +5,47 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 
+from src.logging import get_logger
+from src.exceptions import (
+    SessionDataError,
+    TelemetryError,
+    FastF1APIError,
+    CacheCorruptionError,
+)
+from src.config import settings
+
+# ─────────────────────────────────────────────────────────────────────
+# LOGGING SETUP
+# ─────────────────────────────────────────────────────────────────────
+
+logger = get_logger(__name__)
+
 # ---------------------------------------------------------
 # CONFIG & CACHE SETUP
 # ---------------------------------------------------------
-this_file = os.path.abspath(__file__)
-data_folder = os.path.dirname(this_file)
-src_folder = os.path.dirname(data_folder)
-project_root = os.path.dirname(src_folder)
 
-cache_path = os.path.join(project_root, "cache")
+cache_path = str(settings.CACHE_DIR)
 os.makedirs(cache_path, exist_ok=True)
 
 # Cache aktivieren
-fastf1.Cache.enable_cache(cache_path)
-
+try:
+    if settings.FASTF1_CACHE_ENABLED:
+        fastf1.Cache.enable_cache(cache_path)
+        logger.info("FastF1 cache enabled", cache_path=cache_path)
+    else:
+        fastf1.Cache.disable_cache()
+        logger.info("FastF1 cache disabled")
+except Exception as e:
+    logger.error("Failed to configure FastF1 cache", error=str(e))
+    # Continue anyway
 
 # -------------------------------------------------------
 # HELPER: CUSTOM HASH FUNCTION
 # -------------------------------------------------------
+
+
 def hash_session_id(session):
+    """Generate hash for session caching."""
     if not session:
         return "no_session"
     try:
@@ -32,172 +54,287 @@ def hash_session_id(session):
         )
         name = session.name
         return f"{session.event.Year}_{event}_{name}"
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to generate session hash", error=str(e))
         return str(session)
 
 
 # -------------------------------------------------------
 # HELPER: CACHE CLEARING (SELF-HEALING)
 # -------------------------------------------------------
-def clear_specific_session_cache(year, grand_prix, session_type):
+
+
+def clear_specific_session_cache(year: int, grand_prix: str, session_type: str) -> bool:
     """
-    Versucht, den Cache für ein spezifisches Event zu löschen,
-    falls die Daten korrupt sind.
+    Attempt to clear cache for a specific session if corrupted.
+
+    Args:
+        year: Championship year
+        grand_prix: Grand Prix name
+        session_type: Session type (Q, R, FP1, etc.)
+
+    Returns:
+        True if attempted, False on error
     """
     try:
-        # FastF1 speichert Cache oft unter: cache_dir / year / event_name / session_type
-        # Da wir den genauen Ordnernamen schwer raten können (wegen Fuzzy Matching),
-        # löschen wir im Zweifel den Cache für das ganze Jahr oder warnen den User.
-
-        # Sicherer Ansatz: Wir nutzen FastF1's interne Struktur nicht direkt,
-        # sondern probieren, ob wir den Ordner finden.
         year_path = os.path.join(cache_path, str(year))
         if os.path.exists(year_path):
-            # Wir löschen einfach nichts automatisch, um keine User-Daten zu verlieren,
-            # aber wir geben das Signal zurück, dass neu geladen werden soll.
+            # We don't automatically delete to avoid data loss,
+            # but we signal that reload is needed.
+            logger.info(
+                "Cache clear requested",
+                year=year,
+                grand_prix=grand_prix,
+                session_type=session_type,
+            )
             pass
 
-        # Alternative: FastF1 Cache deaktivieren für den Retry
         return True
     except Exception as e:
-        print(f"Error clearing cache: {e}")
+        logger.error(
+            "Error clearing cache",
+            error=str(e),
+            year=year,
+            grand_prix=grand_prix,
+        )
         return False
 
 
 # ---------------------------------------------------------
 # 1. LOAD SESSION (Robuster mit Retry)
 # ---------------------------------------------------------
+
+
 @st.cache_resource(show_spinner="Loading session data...")
 def load_session(year: int, grand_prix: str, session_type: str):
     """
-    Load a FastF1 session with corruption handling.
+    Load a FastF1 session with corruption handling and logging.
+
+    Args:
+        year: Championship year
+        grand_prix: Grand Prix name/location
+        session_type: Session type (Q, R, FP1, FP2, FP3, S)
+
+    Returns:
+        FastF1 Session object or None if loading failed
+
+    Raises:
+        SessionDataError: If session is in the future
+        FastF1APIError: If FastF1 API fails after retries
     """
     session = None
+    log_context = {
+        "year": year,
+        "grand_prix": grand_prix,
+        "session_type": session_type,
+    }
+
     try:
-        # 1. Session Objekt holen
+        logger.info("Loading session", **log_context)
+
+        # 1. Get session object
         session = fastf1.get_session(year, grand_prix, session_type)
 
-        # 2. Zukunfts-Check
+        # 2. Check if session is in the future
         now = (
             pd.Timestamp.now(tz=session.date.tzinfo)
             if session.date.tzinfo
             else pd.Timestamp.now()
         )
-        # session.date kann tz-aware sein, now muss matchen
+
         if session.date.tzinfo is None:
             now = pd.Timestamp.now()
 
         if session.date > now:
+            msg = f"Session has not occurred yet: {session.date.date()}"
+            logger.warning(msg, **log_context)
             st.warning(
                 f"⚠️ Session '{grand_prix}' hasn't happened yet ({session.date.date()})."
             )
-            return None
+            raise SessionDataError(msg)
 
-        # 3. Daten laden (Normaler Versuch)
+        # 3. Load data (normal attempt)
+        logger.debug("Loading session data from FastF1", **log_context)
         session.load()
+        logger.info("Session loaded successfully", **log_context)
         return session
+
+    except SessionDataError:
+        raise
 
     except Exception as e:
         error_msg = str(e)
+        logger.error("Failed to load session", error=error_msg, **log_context)
 
-        # PRÜFUNG AUF KAPUTTEN CACHE
+        # Check for cache corruption
         if "not been loaded yet" in error_msg or "dictionary changed size" in error_msg:
-            print(
-                f"⚠️ Cache corruption detected for {grand_prix}. Retrying without cache..."
+            logger.warning(
+                "Detected cache corruption, retrying without cache", **log_context
             )
 
             try:
-                # RETRY: Wir deaktivieren den Cache temporär für diesen Aufruf
+                # Retry with cache disabled
                 fastf1.Cache.disable_cache()
-
-                # Objekt neu erstellen, um sauberen State zu haben
                 session = fastf1.get_session(year, grand_prix, session_type)
                 session.load()
-
-                # Cache danach wieder aktivieren für andere Sessions
                 fastf1.Cache.enable_cache(cache_path)
 
+                logger.info(
+                    "Session loaded successfully after cache bypass",
+                    **log_context,
+                )
+                st.info("✅ Session loaded (cache was cleared)")
                 return session
 
             except Exception as retry_err:
-                fastf1.Cache.enable_cache(
-                    cache_path
-                )  # Sicherstellen, dass Cache wieder an ist
-                st.error(
-                    f"❌ Failed to load session even after cache bypass: {retry_err}"
-                )
-                return None
+                fastf1.Cache.enable_cache(cache_path)
+                msg = f"Failed to load session even after cache bypass: {retry_err}"
+                logger.error(msg, error=str(retry_err), **log_context)
+                st.error(f"❌ {msg}")
+                raise FastF1APIError(msg) from retry_err
+
         else:
-            # Anderer Fehler (z.B. API down)
+            # Other error (e.g., API down, network issue)
+            msg = f"Error loading session: {e}"
+            logger.error(msg, error=error_msg, **log_context)
             st.error(f"Error loading session: {e}")
-            return None
+            raise FastF1APIError(msg) from e
 
 
 # ---------------------------------------------------------
 # 2. LOAD TELEMETRY
 # ---------------------------------------------------------
+
+
 @st.cache_data(
     show_spinner="Processing telemetry...",
     hash_funcs={fastf1.core.Session: hash_session_id},
 )
 def load_telemetry(session, driver_code: str):
+    """
+    Load and process telemetry for a specific driver's fastest lap.
+
+    Args:
+        session: FastF1 Session object
+        driver_code: 3-letter driver code (e.g., 'VER', 'HAM')
+
+    Returns:
+        Telemetry DataFrame or None if unavailable
+
+    Raises:
+        TelemetryError: If telemetry processing fails
+    """
+    log_context = {"driver": driver_code, "session": str(session)[:50]}
+
     if session is None:
+        logger.warning("Session is None, cannot load telemetry", **log_context)
         return None
+
     try:
-        # Prüfen ob Daten wirklich da sind
+        logger.debug("Loading telemetry", **log_context)
+
+        # Check if session has laps data
         if not hasattr(session, "laps"):
-            return None
+            msg = "Session has no laps data"
+            logger.error(msg, **log_context)
+            raise TelemetryError(msg)
 
         laps = session.laps.pick_driver(driver_code)
         if laps.empty:
+            msg = f"No laps found for driver {driver_code}"
+            logger.warning(msg, **log_context)
             return None
 
         fastest = laps.pick_fastest()
         if fastest is None:
+            msg = f"No fastest lap found for driver {driver_code}"
+            logger.warning(msg, **log_context)
             return None
 
         tel = fastest.get_car_data().add_distance()
+
+        # Ensure nGear column exists
         if "nGear" not in tel.columns:
             tel["nGear"] = 0
+
+        logger.info(
+            "Telemetry loaded successfully",
+            **log_context,
+            samples=len(tel),
+        )
         return tel
+
+    except TelemetryError:
+        raise
+
     except Exception as e:
-        print(f"Telemetry Error ({driver_code}): {e}")
-        return None
+        msg = f"Failed to load telemetry for {driver_code}"
+        logger.error(msg, error=str(e), **log_context, exc_info=True)
+        raise TelemetryError(msg) from e
 
 
 # ---------------------------------------------------------
 # 3. LOAD TELEMETRY WITH POSITION
 # ---------------------------------------------------------
+
+
 @st.cache_data(
     show_spinner="Loading position data...",
     hash_funcs={fastf1.core.Session: hash_session_id},
 )
 def load_telemetry_with_position(session, driver_code: str):
+    """
+    Load telemetry with GPS position data for track mapping.
+
+    Args:
+        session: FastF1 Session object
+        driver_code: 3-letter driver code
+
+    Returns:
+        Merged telemetry+position DataFrame or None
+
+    Raises:
+        TelemetryError: If data loading fails
+    """
+    log_context = {"driver": driver_code, "session": str(session)[:50]}
+
     if session is None:
+        logger.warning("Session is None, cannot load position data", **log_context)
         return None
+
     try:
+        logger.debug("Loading telemetry with position", **log_context)
+
         if not hasattr(session, "laps"):
-            return None
+            msg = "Session has no laps data"
+            logger.error(msg, **log_context)
+            raise TelemetryError(msg)
 
         laps = session.laps.pick_driver(driver_code)
         if laps.empty:
+            msg = f"No laps for driver {driver_code}"
+            logger.warning(msg, **log_context)
             return None
 
         fastest = laps.pick_fastest()
         if fastest is None:
+            msg = f"No fastest lap for driver {driver_code}"
+            logger.warning(msg, **log_context)
             return None
 
-        # Positionsdaten können fehlen (z.B. 2017 und früher oft lückenhaft)
+        # Position data may be unavailable (especially pre-2018 seasons)
         try:
             pos = fastest.get_telemetry()[["Time", "X", "Y"]].copy()
-        except:
-            # Fallback für alte Jahre ohne GPS-Daten
+        except Exception as pos_err:
+            msg = f"No position data available for {driver_code} (common in older seasons)"
+            logger.warning(msg, error=str(pos_err), **log_context)
             return None
 
         pos["Time_s"] = pos["Time"].dt.total_seconds()
         car = fastest.get_car_data().copy()
         car["Time_s"] = car["Time"].dt.total_seconds()
 
+        # Merge position and car data
         merged = pd.merge_asof(
             pos.sort_values("Time_s"),
             car.sort_values("Time_s"),
@@ -226,20 +363,49 @@ def load_telemetry_with_position(session, driver_code: str):
             d = np.sqrt(dx**2 + dy**2)
             merged["Distance"] = np.concatenate([[0], np.cumsum(d)])
 
+        logger.info(
+            "Position data loaded and merged",
+            **log_context,
+            merged_samples=len(merged),
+        )
         return merged
+
+    except TelemetryError:
+        raise
+
     except Exception as e:
-        print(f"Pos Telemetry Error ({driver_code}): {e}")
-        return None
+        msg = f"Failed to load position telemetry for {driver_code}"
+        logger.error(msg, error=str(e), **log_context, exc_info=True)
+        raise TelemetryError(msg) from e
 
 
 # ---------------------------------------------------------
 # 4. GET TRACK LIST (DYNAMIC)
 # ---------------------------------------------------------
+
+
 @st.cache_data(show_spinner=False)
 def get_tracks_for_year(year: int):
+    """
+    Get list of tracks for a given championship year.
+
+    Args:
+        year: Championship year
+
+    Returns:
+        List of track names/locations
+
+    Note:
+        Returns empty list if API fails; UI will fallback to hardcoded list
+    """
+    log_context = {"year": year}
+
     try:
+        logger.debug("Fetching track schedule", **log_context)
         schedule = fastf1.get_event_schedule(year, include_testing=False)
+
         if schedule.empty:
+            logger.warning("Empty schedule returned from FastF1", **log_context)
             return []
 
         if "Location" in schedule.columns:
@@ -247,15 +413,23 @@ def get_tracks_for_year(year: int):
         elif "EventName" in schedule.columns:
             tracks = schedule["EventName"].dropna().astype(str).tolist()
         else:
+            msg = "Schedule has unexpected format"
+            logger.error(msg, **log_context, columns=list(schedule.columns))
             return []
 
         # Deduplicate
         seen = set()
-        return [
+        result = [
             x.strip()
             for x in tracks
             if x.strip() and not (x.strip() in seen or seen.add(x.strip()))
         ]
+
+        logger.info("Track schedule fetched", **log_context, count=len(result))
+        return result
+
     except Exception as e:
-        print(f"Schedule Error {year}: {e}")
+        msg = f"Failed to fetch schedule for {year}"
+        logger.error(msg, error=str(e), **log_context, exc_info=True)
+        # Return empty list - UI will fallback to hardcoded list
         return []
