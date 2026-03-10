@@ -46,8 +46,49 @@ from src.insights.corner_utils import (
 )
 from src.insights.report_engine import generate_race_engineer_report
 from app.components.report_view import render_race_engineer_report
+from src.exceptions import (
+    SessionDataError,
+    TelemetryError,
+    ComparisonError,
+    TimeCalculationError,
+    DriverNotFoundError,
+    InvalidSessionError,
+    InvalidTelemetryError,
+    ReportGenerationError,
+    CoachingEngineError,
+)
 
 logger = get_logger(__name__)
+
+
+def show_user_friendly_error(
+    exc: Exception, fallback: str = "Unexpected error."
+) -> None:
+    """Map domain exceptions to clear UI messages."""
+    if isinstance(exc, SessionDataError):
+        st.error(
+            "Session data konnte nicht geladen werden. Bitte Jahr/Track/Session prüfen."
+        )
+    elif isinstance(exc, DriverNotFoundError):
+        st.error("Mindestens ein Fahrer wurde in der Session nicht gefunden.")
+    elif isinstance(exc, (InvalidSessionError, InvalidTelemetryError)):
+        st.error("Session- oder Telemetry-Daten sind unvollständig oder ungültig.")
+    elif isinstance(exc, TelemetryError):
+        st.error(
+            "Telemetry konnte nicht verarbeitet werden. Bitte andere Fahrer/Session testen."
+        )
+    elif isinstance(exc, ComparisonError):
+        st.error(
+            "Driver-Vergleich fehlgeschlagen. Daten konnten nicht sauber synchronisiert werden."
+        )
+    elif isinstance(exc, TimeCalculationError):
+        st.error("Time-Loss-Berechnung fehlgeschlagen.")
+    elif isinstance(exc, ReportGenerationError):
+        st.error("Executive Report konnte nicht erzeugt werden.")
+    elif isinstance(exc, CoachingEngineError):
+        st.error("Coaching-Analyse konnte nicht erstellt werden.")
+    else:
+        st.error(fallback)
 
 
 # -------------------------------------------------------
@@ -91,8 +132,14 @@ with col1:
 with col2:
     # 1. Dynamische Streckenliste laden
     with st.spinner(f"Loading {year} Calendar..."):
-        tracks_for_year = get_tracks_for_year(year)
-        logger.debug("Tracks loaded", year=year, count=len(tracks_for_year or []))
+        try:
+            tracks_for_year = get_tracks_for_year(year)
+            logger.debug("Tracks loaded", year=year, count=len(tracks_for_year or []))
+        except Exception as e:
+            logger.warning(
+                "Track list load failed, using fallback", year=year, error=str(e)
+            )
+            tracks_for_year = []
 
     # 2. Fallback falls API offline ist (Offline Modus)
     if not tracks_for_year:
@@ -179,6 +226,22 @@ if st.button("Load session"):
             st.success(f"Loaded: {year} {track} {session_type}")
             st.rerun()
 
+    except (
+        SessionDataError,
+        DriverNotFoundError,
+        InvalidSessionError,
+        TelemetryError,
+        InvalidTelemetryError,
+    ) as e:
+        logger.error(
+            "Session load failed (domain exception)",
+            year=year,
+            track=track,
+            session_type=session_type,
+            error=str(e),
+            exc_info=True,
+        )
+        show_user_friendly_error(e, fallback="Error loading session.")
     except Exception as e:
         logger.error(
             "Session load failed",
@@ -238,6 +301,21 @@ if st.session_state.get("drivers_full"):
             logger.info("Comparison complete", driver_a=driverA, driver_b=driverB)
             st.rerun()
 
+        except (
+            DriverNotFoundError,
+            TelemetryError,
+            InvalidTelemetryError,
+            ComparisonError,
+            TimeCalculationError,
+        ) as e:
+            logger.error(
+                "Driver comparison failed (domain exception)",
+                driver_a=driverA_full,
+                driver_b=driverB_full,
+                error=str(e),
+                exc_info=True,
+            )
+            show_user_friendly_error(e, fallback="Compare failed.")
         except Exception as e:
             logger.error(
                 "Driver comparison failed",
@@ -425,14 +503,21 @@ if st.session_state.get("compare_result"):
             and tl_classified is not None
             and not tl_classified.empty
         ):
-            report_data = generate_race_engineer_report(
-                tl_classified,
-                agg_types,
-                driverA,
-                driverB,
-                track,
-            )
-            render_race_engineer_report(report_data)
+            try:
+                report_data = generate_race_engineer_report(
+                    tl_classified,
+                    agg_types,
+                    driverA,
+                    driverB,
+                    track,
+                )
+                render_race_engineer_report(report_data)
+            except ReportGenerationError as e:
+                logger.error("Report generation failed", error=str(e), exc_info=True)
+                show_user_friendly_error(e, fallback="Report could not be generated.")
+            except Exception as e:
+                logger.error("Unexpected report error", error=str(e), exc_info=True)
+                st.warning("Report temporarily unavailable.")
         else:
             st.warning("Insufficient data to generate Executive Report.")
 
@@ -442,7 +527,16 @@ if st.session_state.get("compare_result"):
         st.markdown("### Detailed Corner Analysis")
         st.caption("Specific telemetry deviations per corner.")
 
-        suggestions = coaching_suggestions(tl, driverA, driverB)
+        try:
+            suggestions = coaching_suggestions(tl, driverA, driverB)
+        except CoachingEngineError as e:
+            logger.error("Coaching engine failed", error=str(e), exc_info=True)
+            show_user_friendly_error(e, fallback="Coaching analysis unavailable.")
+            suggestions = []
+        except Exception as e:
+            logger.error("Unexpected coaching error", error=str(e), exc_info=True)
+            st.warning("Detailed corner coaching unavailable.")
+            suggestions = []
 
         if not suggestions:
             st.info("No significant weaknesses found in detail analysis.")
