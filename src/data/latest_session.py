@@ -5,12 +5,14 @@ import logging
 
 import streamlit as st
 
+from src.models import LatestSessionsPayload, SeasonResultsPayload
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 @st.cache_data(ttl=600, show_spinner="Loading F1 schedule...")
-def get_latest_sessions(year: Optional[int] = None) -> dict:
+def get_latest_sessions(year: Optional[int] = None) -> dict[str, object]:
     """
     Returns complete event data for navigation and next session info.
 
@@ -158,13 +160,14 @@ def get_latest_sessions(year: Optional[int] = None) -> dict:
     else:
         logger.info("No future sessions found - season finished")
 
-    return {
-        "events": events,
-        "latest_completed_index": latest_completed_index,
-        "next_session_name": next_session_name,
-        "next_session_time": next_session_time,
-        "next_event_index": next_event_index,
-    }
+    payload = LatestSessionsPayload(
+        events=events,
+        latest_completed_index=latest_completed_index,
+        next_session_name=str(next_session_name),
+        next_session_time=next_session_time,
+        next_event_index=next_event_index,
+    )
+    return payload.model_dump()
 
 
 def load_single_session_results(
@@ -283,4 +286,10 @@ def get_season_results(year: int, event_key: str) -> dict[str, Optional[pd.DataF
     loaded_sessions = [k for k, v in results.items() if v is not None]
     logger.info(f"Loaded sessions for {event_key}: {loaded_sessions}")
 
-    return results
+    payload = SeasonResultsPayload(
+        Q=results["Q"],
+        SQ=results["SQ"],
+        S=results["S"],
+        R=results["R"],
+    )
+    return payload.model_dump()
