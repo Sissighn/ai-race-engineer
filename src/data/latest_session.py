@@ -1,17 +1,13 @@
 import fastf1
 import pandas as pd
 from typing import Optional
-import logging
 
-import streamlit as st
-
+from src.logging import get_logger
 from src.models import LatestSessionsPayload, SeasonResultsPayload
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
-@st.cache_data(ttl=600, show_spinner="Loading F1 schedule...")
 def get_latest_sessions(year: Optional[int] = None) -> dict[str, object]:
     """
     Returns complete event data for navigation and next session info.
@@ -248,7 +244,6 @@ def load_single_session_results(
         return None
 
 
-@st.cache_data(show_spinner="Loading season results...")
 def get_season_results(year: int, event_key: str) -> dict[str, Optional[pd.DataFrame]]:
     """
     Returns a dict of DataFrames for one event (GP).
