@@ -3,13 +3,13 @@ from typing import Any
 from src.data.compare import compare_drivers_corner_level
 from src.data.load_data import get_tracks_for_year, load_telemetry
 from src.domain.analysis.coaching import coaching_suggestions
-from src.domain.analysis.time_loss import estimate_time_loss_per_corner
-from src.domain.reporting.report_generator import generate_race_engineer_report
-from src.insights.corner_utils import (
+from src.domain.analysis.corner import (
     add_corner_classification,
     aggregate_time_loss_by_type,
     get_corner_type_advice,
 )
+from src.domain.analysis.time_loss import estimate_time_loss_per_corner
+from src.domain.reporting.report_generator import generate_race_engineer_report
 from src.models import ComparisonComputeResult, CornerAnalysisPayload
 
 
