@@ -253,7 +253,19 @@ def load_telemetry(session: Any, driver_code: str) -> Optional[pd.DataFrame]:
             logger.warning(msg, **log_context)
             return None
 
-        tel = fastest.get_car_data().add_distance()
+        # get_car_data / add_distance can fail for very recent races
+        # where FastF1 hasn't fully processed the telemetry yet.
+        # In that case return None gracefully instead of crashing.
+        try:
+            tel = fastest.get_car_data().add_distance()
+        except Exception as tel_err:
+            msg = f"Car telemetry not yet available for {driver_code}: {tel_err}"
+            logger.warning(msg, error=str(tel_err), **log_context)
+            return None
+
+        if tel is None or tel.empty:
+            logger.warning("Empty telemetry returned", **log_context)
+            return None
 
         # Ensure nGear column exists
         if "nGear" not in tel.columns:

@@ -165,9 +165,9 @@ with col2:
 if "event_index" not in st.session_state:
     st.session_state.event_index = 0
 
-# Get all events for the season
+# Get all events for the season (exclude pre-season testing)
 try:
-    all_events = fastf1.get_event_schedule(season_year)
+    all_events = fastf1.get_event_schedule(season_year, include_testing=False).copy()
 except DOMAIN_EXCEPTIONS as e:
     logger.error(
         "Failed to load event schedule (domain exception)",
