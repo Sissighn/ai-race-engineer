@@ -436,29 +436,6 @@ if st.session_state.get("compare_result"):
         plot_apex_speed_share(tl, key="apex_share_overview")
 
     # -------------------------------------------------------
-    # DELTA LAP OVERLAY (Always visible below tabs)
-    # -------------------------------------------------------
-    st.markdown("<h3>Delta Lap Overlay</h3>", unsafe_allow_html=True)
-    try:
-        tel_sync = sync_telemetry(telA, telB)
-        dfA = tel_sync.rename(columns={"Speed_1": "Speed_A", "Time_1": "Time_A"})[
-            ["Distance", "Speed_A", "Time_A"]
-        ]
-        dfB = tel_sync.rename(columns={"Speed_2": "Speed_B", "Time_2": "Time_B"})[
-            ["Distance", "Speed_B", "Time_B"]
-        ]
-        delta_df = compute_delta_lap(dfA, dfB)
-        plot_delta_lap(delta_df, driverA, driverB)
-    except Exception as e:
-        logger.warning(
-            "Delta lap computation failed",
-            driver_a=driverA,
-            driver_b=driverB,
-            error=str(e),
-        )
-        st.warning(f"Could not compute Delta Lap: {e}")
-
-    # -------------------------------------------------------
     # 2. DRIVER INPUTS TAB
     # -------------------------------------------------------
     with tab_inputs:
@@ -472,6 +449,27 @@ if st.session_state.get("compare_result"):
             plot_track_map(session, driverB, track)
 
         plot_speed_profile(telA, telB, driverA, driverB, key="speed_prof_inputs")
+
+        st.markdown("<h3>Delta Lap Overlay</h3>", unsafe_allow_html=True)
+        try:
+            tel_sync = sync_telemetry(telA, telB)
+            dfA = tel_sync.rename(columns={"Speed_1": "Speed_A", "Time_1": "Time_A"})[
+                ["Distance", "Speed_A", "Time_A"]
+            ]
+            dfB = tel_sync.rename(columns={"Speed_2": "Speed_B", "Time_2": "Time_B"})[
+                ["Distance", "Speed_B", "Time_B"]
+            ]
+            delta_df = compute_delta_lap(dfA, dfB)
+            plot_delta_lap(delta_df, driverA, driverB)
+        except Exception as e:
+            logger.warning(
+                "Delta lap computation failed",
+                driver_a=driverA,
+                driver_b=driverB,
+                error=str(e),
+            )
+            st.warning(f"Could not compute Delta Lap: {e}")
+
         plot_brake_throttle(telA, telB, driverA, driverB, key="brake_thr_inputs")
 
         col_gear1, col_gear2 = st.columns(2)
