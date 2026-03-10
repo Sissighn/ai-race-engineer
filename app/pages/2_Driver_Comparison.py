@@ -1,17 +1,16 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
 import sys
 import os
 
-from src.logging import get_logger
-
-# -------------------------------------------------------
-# FIX PYTHON PATH
-# -------------------------------------------------------
+# Ensure project root is on sys.path so 'src' and 'app' are importable
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+
+from src.logging import get_logger
 
 # -------------------------------------------------------
 # IMPORTS
