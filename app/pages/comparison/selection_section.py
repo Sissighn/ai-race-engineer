@@ -10,6 +10,7 @@ from src.application.comparison_service import (
 )
 from src.data.load_data import load_session
 from src.logging import get_logger
+from src.models import ComparisonSessionState
 
 logger = get_logger(__name__)
 
@@ -160,23 +161,23 @@ def handle_driver_comparison(driver_a_full: str, driver_b_full: str) -> None:
         with st.spinner("Analyzing Telemetry..."):
             service_result = compare_session_drivers(session, driver_a, driver_b)
 
-            if service_result["missing"]:
+            if service_result.missing:
                 st.error(
-                    f"❌ No car telemetry data available for: **{', '.join(service_result['missing'])}** "
+                    f"❌ No car telemetry data available for: **{', '.join(service_result.missing)}** "
                     "in this session. The F1 data API does not provide car data for "
                     "every driver in every session. Please select a different driver."
                 )
                 st.stop()
 
-        st.session_state["compare_result"] = {
-            "session": session,
-            "driverA": driver_a,
-            "driverB": driver_b,
-            "telA": service_result["telA"],
-            "telB": service_result["telB"],
-            "comp": service_result["comp"],
-            "tl": service_result["tl"],
-        }
+        st.session_state["compare_result"] = ComparisonSessionState(
+            session=session,
+            driver_a=driver_a,
+            driver_b=driver_b,
+            tel_a=service_result.tel_a,
+            tel_b=service_result.tel_b,
+            comp=service_result.comp,
+            tl=service_result.tl,
+        )
         logger.info("Comparison complete", driver_a=driver_a, driver_b=driver_b)
         st.rerun()
 

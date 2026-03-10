@@ -10,6 +10,7 @@ from src.insights.corner_utils import (
 )
 from src.insights.report_engine import generate_race_engineer_report
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
+from src.models import ComparisonComputeResult, CornerAnalysisPayload
 
 
 def get_tracks_for_year_for_ui(year: int) -> list[str]:
@@ -56,7 +57,7 @@ def build_driver_map(session: Any) -> tuple[list[str], dict[str, str], list[str]
 
 def compare_session_drivers(
     session: Any, driver_a: str, driver_b: str
-) -> dict[str, Any]:
+) -> ComparisonComputeResult:
     tel_a = load_telemetry(session, driver_a)
     tel_b = load_telemetry(session, driver_b)
 
@@ -67,27 +68,27 @@ def compare_session_drivers(
         missing.append(driver_b)
 
     if missing:
-        return {
-            "missing": missing,
-            "telA": tel_a,
-            "telB": tel_b,
-            "comp": None,
-            "tl": None,
-        }
+        return ComparisonComputeResult(
+            missing=missing,
+            tel_a=tel_a,
+            tel_b=tel_b,
+            comp=None,
+            tl=None,
+        )
 
     comp = compare_drivers_corner_level(session, driver_a, driver_b)
     tl = estimate_time_loss_per_corner(comp, driver_a, driver_b)
 
-    return {
-        "missing": [],
-        "telA": tel_a,
-        "telB": tel_b,
-        "comp": comp,
-        "tl": tl,
-    }
+    return ComparisonComputeResult(
+        missing=[],
+        tel_a=tel_a,
+        tel_b=tel_b,
+        comp=comp,
+        tl=tl,
+    )
 
 
-def build_corner_analysis(tl, driver_a: str, driver_b: str) -> dict[str, Any]:
+def build_corner_analysis(tl, driver_a: str, driver_b: str) -> CornerAnalysisPayload:
     tl_classified = add_corner_classification(tl)
     agg_types = aggregate_time_loss_by_type(tl_classified)
     advice_list = []
@@ -97,11 +98,11 @@ def build_corner_analysis(tl, driver_a: str, driver_b: str) -> dict[str, Any]:
             agg_types, driver_a=driver_a, driver_b=driver_b
         )
 
-    return {
-        "tl_classified": tl_classified,
-        "agg_types": agg_types,
-        "advice_list": advice_list,
-    }
+    return CornerAnalysisPayload(
+        tl_classified=tl_classified,
+        agg_types=agg_types,
+        advice_list=advice_list,
+    )
 
 
 def build_race_engineer_report(
