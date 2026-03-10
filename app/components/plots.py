@@ -2,6 +2,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from src.logging import get_logger
+
+logger = get_logger(__name__)
+
 # -------------------------------------------------------
 # GLOBAL DARK THEME
 # -------------------------------------------------------
@@ -10,6 +14,16 @@ DARK_PAPER = "#191919"
 TEXT_COLOR = "#FFFFFF"
 
 PASTEL_COLORS = ["#A48FFF", "#FFB7D5", "#8FD3FE", "#FFDD94", "#C9F7C5", "#FDCFE8"]
+
+
+def _safe_plotly_chart(fig, key=None, context="plot"):
+    try:
+        st.plotly_chart(fig, use_container_width=True, key=key)
+    except Exception as e:
+        logger.error(
+            "Failed to render plot", context=context, key=str(key), error=str(e)
+        )
+        st.warning("A chart could not be rendered.")
 
 
 def dark_layout(fig, title=None):
@@ -31,6 +45,11 @@ def dark_layout(fig, title=None):
 # 1) TIME LOSS BAR CHART
 # -------------------------------------------------------
 def plot_time_loss_bar(df, key="time_loss_bar"):
+    if df is None or df.empty:
+        logger.info("No data for time loss chart")
+        st.info("No time loss data available.")
+        return
+
     fig = px.bar(
         df,
         x="Corner",
@@ -45,13 +64,17 @@ def plot_time_loss_bar(df, key="time_loss_bar"):
     fig.update_xaxes(title_text="Corner")
     fig.update_yaxes(title_text="Time Loss (s)")
 
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="time_loss_bar")
 
 
 # -------------------------------------------------------
 # 2) SPEED DELTAS – APEX & EXIT
 # -------------------------------------------------------
 def plot_speed_deltas(df, driver_a, driver_b, key="speed_deltas"):
+    if df is None or df.empty:
+        logger.info("No data for speed deltas", driver_a=driver_a, driver_b=driver_b)
+        st.info("No speed delta data available.")
+        return
 
     fig = go.Figure()
 
@@ -77,13 +100,19 @@ def plot_speed_deltas(df, driver_a, driver_b, key="speed_deltas"):
     fig.update_xaxes(title_text="Corner")
     fig.update_yaxes(title_text="Speed Delta (km/h)")
 
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="speed_deltas")
 
 
 # -------------------------------------------------------
 # 3) SPEED PROFILE – LINE PLOT
 # -------------------------------------------------------
 def plot_speed_profile(telA, telB, driverA, driverB, key="speed_profile"):
+    if telA is None or telB is None or telA.empty or telB.empty:
+        logger.warning(
+            "Missing telemetry for speed profile", driver_a=driverA, driver_b=driverB
+        )
+        st.info("Speed profile unavailable.")
+        return
 
     fig = go.Figure()
 
@@ -111,13 +140,21 @@ def plot_speed_profile(telA, telB, driverA, driverB, key="speed_profile"):
     fig.update_xaxes(title_text="Distance (m)")
     fig.update_yaxes(title_text="Speed (km/h)")
 
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="speed_profile")
 
 
 # -------------------------------------------------------
 # 4) BRAKE & THROTTLE INPUTS
 # -------------------------------------------------------
 def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
+    if telA is None or telB is None or telA.empty or telB.empty:
+        logger.warning(
+            "Missing telemetry for brake/throttle plot",
+            driver_a=driverA,
+            driver_b=driverB,
+        )
+        st.info("Brake/Throttle plot unavailable.")
+        return
 
     fig = go.Figure()
 
@@ -167,7 +204,7 @@ def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
     fig.update_xaxes(title_text="Distance (m)")
     fig.update_yaxes(title_text="Input (%)")
 
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="brake_throttle")
 
 
 # -------------------------------------------------------
@@ -177,6 +214,11 @@ def plot_gear_usage(tel, driver, key=None):
     # Falls key nicht übergeben wurde, generieren wir einen aus dem Fahrernamen
     if key is None:
         key = f"gear_usage_{driver}"
+
+    if tel is None or tel.empty or "nGear" not in tel.columns:
+        logger.warning("Missing nGear data for gear usage", driver=driver)
+        st.info(f"No gear usage data for {driver}.")
+        return
 
     gear_counts = tel["nGear"].value_counts().sort_index()
 
@@ -189,7 +231,7 @@ def plot_gear_usage(tel, driver, key=None):
     )
 
     fig = dark_layout(fig)
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="gear_usage")
 
 
 # -------------------------------------------------------
@@ -197,6 +239,7 @@ def plot_gear_usage(tel, driver, key=None):
 # -------------------------------------------------------
 def plot_apex_speed_share(df, key="apex_share"):
     if df is None or df.empty or "Delta_ApexSpeed" not in df.columns:
+        logger.info("Apex speed share skipped due to missing data")
         return
 
     # Fix für Pie-Charts (keine negativen Werte)
@@ -214,7 +257,7 @@ def plot_apex_speed_share(df, key="apex_share"):
     )
 
     fig = dark_layout(fig)
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="apex_speed_share")
 
 
 # -------------------------------------------------------
@@ -224,6 +267,13 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
     """
     Plots a Radar Chart comparing two drivers' characteristics.
     """
+    if dna_df is None or dna_df.empty:
+        logger.warning(
+            "No data for driver DNA chart", driver_a=driver_a, driver_b=driver_b
+        )
+        st.info("Driver DNA chart unavailable.")
+        return
+
     fig = go.Figure()
 
     # Trace für Driver A
@@ -279,7 +329,7 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
     )
 
     # Hier übergeben wir den Key an Streamlit!
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="driver_dna")
 
 
 # -------------------------------------------------------
@@ -326,4 +376,4 @@ def plot_corner_type_performance(agg_df, key="corner_type_perf"):
         xaxis=dict(title=""),
     )
 
-    st.plotly_chart(fig, use_container_width=True, key=key)
+    _safe_plotly_chart(fig, key=key, context="corner_type_performance")
