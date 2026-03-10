@@ -241,7 +241,7 @@ def load_telemetry(session: Any, driver_code: str) -> Optional[pd.DataFrame]:
             logger.error(msg, **log_context)
             raise TelemetryError(msg)
 
-        laps = session.laps.pick_driver(driver_code)
+        laps = session.laps.pick_drivers(driver_code)
         if laps.empty:
             msg = f"No laps found for driver {driver_code}"
             logger.warning(msg, **log_context)
@@ -314,7 +314,7 @@ def load_telemetry_with_position(
             logger.error(msg, **log_context)
             raise TelemetryError(msg)
 
-        laps = session.laps.pick_driver(driver_code)
+        laps = session.laps.pick_drivers(driver_code)
         if laps.empty:
             msg = f"No laps for driver {driver_code}"
             logger.warning(msg, **log_context)

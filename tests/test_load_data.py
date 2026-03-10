@@ -30,7 +30,7 @@ class _FakeLaps:
         self.empty = empty
         self._fastest = fastest
 
-    def pick_driver(self, _driver_code):
+    def pick_drivers(self, _driver_code):
         return self
 
     def pick_fastest(self):
