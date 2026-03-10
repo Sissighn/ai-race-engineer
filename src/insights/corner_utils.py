@@ -165,23 +165,31 @@ def aggregate_time_loss_by_type(df: pd.DataFrame) -> Optional[pd.DataFrame]:
         raise ValidationError(msg) from e
 
 
-def get_corner_type_advice(agg_df: Optional[pd.DataFrame]) -> list:
+def get_corner_type_advice(
+    agg_df: Optional[pd.DataFrame],
+    driver_a: str = "Driver A",
+    driver_b: str = "Driver B",
+) -> list[str]:
     """
-    Generate coaching advice based on time loss by corner type.
+    Generate post-race engineering insights from corner-type deltas.
 
-    Identifies the corner type with the largest time differential
-    and provides targeted coaching based on grip characteristics.
+    Produces concise, professional recommendations based on where
+    the largest time deficit occurred.
 
     Args:
         agg_df: Aggregated time loss by corner type
 
     Returns:
-        List of coaching tips
+        List of insight strings
 
     Raises:
         ValidationError: If analysis fails
     """
-    log_context = {"rows": len(agg_df) if agg_df is not None else 0}
+    log_context = {
+        "rows": len(agg_df) if agg_df is not None else 0,
+        "driver_a": driver_a,
+        "driver_b": driver_b,
+    }
 
     try:
         if agg_df is None or agg_df.empty:
@@ -190,43 +198,87 @@ def get_corner_type_advice(agg_df: Optional[pd.DataFrame]) -> list:
 
         logger.debug("Generating corner type advice", **log_context)
 
-        # Find category with highest absolute difference
-        agg_df["AbsLoss"] = agg_df["TimeLoss"].abs()
-        worst = agg_df.loc[agg_df["AbsLoss"].idxmax()]
+        if "CornerType" not in agg_df.columns or "TimeLoss" not in agg_df.columns:
+            logger.warning(
+                "Missing required columns for advice",
+                columns=list(agg_df.columns),
+                **log_context,
+            )
+            return []
 
-        type_name = worst["CornerType"]
-        loss_val = worst["TimeLoss"]
+        work = agg_df.copy()
+        work["TimeLoss"] = pd.to_numeric(work["TimeLoss"], errors="coerce").fillna(0.0)
 
-        tips = []
+        total_delta = float(work["TimeLoss"].sum())
+
+        # TimeLoss convention from time_loss_engine:
+        # Positive => driver_a gains (driver_b loses)
+        # Negative => driver_a loses
+        if total_delta > 0:
+            losing_driver = driver_b
+            reference_driver = driver_a
+            work["Deficit"] = work["TimeLoss"].clip(lower=0.0)
+        elif total_delta < 0:
+            losing_driver = driver_a
+            reference_driver = driver_b
+            work["Deficit"] = (-work["TimeLoss"]).clip(lower=0.0)
+        else:
+            losing_driver = None
+            reference_driver = None
+            work["Deficit"] = 0.0
+
+        # Sort by deficit from largest to smallest
+        deficits = work.sort_values("Deficit", ascending=False)
+        top = deficits.iloc[0]
 
         # Ignore tiny differences
-        if abs(loss_val) < 0.05:
-            logger.info("Time loss insignificant", max_loss=abs(loss_val))
-            return ["Pace is very evenly matched across all corner types."]
+        if float(top["Deficit"]) < 0.05:
+            logger.info("Time loss insignificant", max_loss=float(top["Deficit"]))
+            return [
+                "No dominant deficit by corner category (all deltas below 0.050s).",
+                "Maintain current setup baseline and focus on execution consistency corner-to-corner.",
+                "For the next run, prioritize repeatability metrics (brake release timing, minimum speed, throttle pickup) over setup changes.",
+            ]
 
-        loss_str = f"{abs(loss_val):.3f}s"
+        primary_type = str(top["CornerType"])
+        primary_loss = float(top["Deficit"])
 
-        # Type-specific advice
-        if type_name == "Low Speed":
-            advice = "Focus on **mechanical grip/rotation**. Optimize trail-braking to rotate the car earlier."
-        elif type_name == "Medium Speed":
-            advice = (
-                "Focus on **balance**. Ensure smooth transition from brake to throttle."
-            )
-        elif type_name == "High Speed":
-            advice = "Focus on **aerodynamic trust**. Commit to throttle earlier and minimize scrubbing."
-        else:
-            advice = "Check telemetry consistency."
+        tips: list[str] = [
+            f"Primary deficit for {losing_driver}: {primary_type} corners ({primary_loss:.3f}s) relative to {reference_driver}.",
+        ]
 
-        # Convention: TimeLoss > 0 = Driver A faster (gaining time)
-        if loss_val > 0:
+        # Type-specific, post-race technical actions
+        if primary_type == "Low Speed":
             tips.append(
-                f"Major deficit in **{type_name}** corners (losing {loss_str}). {advice}"
+                "Action: improve low-speed rotation by refining trail-brake release, reducing entry under-rotation, and checking differential/coast settings on corner entry."
+            )
+        elif primary_type == "Medium Speed":
+            tips.append(
+                "Action: stabilize the transition phase by reducing brake-throttle overlap and smoothing steering-rate input through mid-corner."
+            )
+        elif primary_type == "High Speed":
+            tips.append(
+                "Action: improve high-speed commitment by reviewing lift points, minimizing steering scrub, and validating aero balance stability in fast direction changes."
             )
         else:
             tips.append(
-                f"Strong performance in **{type_name}** corners (gaining {loss_str}). Keep it up!"
+                "Action: validate corner classification and telemetry consistency before applying setup changes."
             )
+
+        # Secondary and tertiary priorities (if meaningful)
+        secondary_rows = deficits.iloc[1:]
+        secondary_rows = secondary_rows[secondary_rows["Deficit"] >= 0.05]
+
+        if not secondary_rows.empty:
+            sec = secondary_rows.iloc[0]
+            tips.append(
+                f"Secondary priority: {sec['CornerType']} corners ({float(sec['Deficit']):.3f}s). Address this after the primary category."
+            )
+
+        # Closing operational recommendation (always included)
+        tips.append(
+            "Validation plan: compare min speed, brake release point, and throttle-at-apex for the top deficit category before the next setup iteration."
+        )
 
         logger.info("Advice generated", tips_count=len(tips), **log_context)
         return tips
