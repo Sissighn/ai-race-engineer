@@ -17,6 +17,7 @@ if project_root not in sys.path:
 # IMPORTS
 # -------------------------------------------------------
 from app.utils.ui import load_css
+from app.utils.error_ui import show_domain_error, DOMAIN_EXCEPTIONS
 from app.components.navbar import navbar
 from app.components.glow_card import GlowCard
 from app.components.plots import (
@@ -46,49 +47,8 @@ from src.insights.corner_utils import (
 )
 from src.insights.report_engine import generate_race_engineer_report
 from app.components.report_view import render_race_engineer_report
-from src.exceptions import (
-    SessionDataError,
-    TelemetryError,
-    ComparisonError,
-    TimeCalculationError,
-    DriverNotFoundError,
-    InvalidSessionError,
-    InvalidTelemetryError,
-    ReportGenerationError,
-    CoachingEngineError,
-)
 
 logger = get_logger(__name__)
-
-
-def show_user_friendly_error(
-    exc: Exception, fallback: str = "Unexpected error."
-) -> None:
-    """Map domain exceptions to clear UI messages."""
-    if isinstance(exc, SessionDataError):
-        st.error(
-            "Session data konnte nicht geladen werden. Bitte Jahr/Track/Session prüfen."
-        )
-    elif isinstance(exc, DriverNotFoundError):
-        st.error("Mindestens ein Fahrer wurde in der Session nicht gefunden.")
-    elif isinstance(exc, (InvalidSessionError, InvalidTelemetryError)):
-        st.error("Session- oder Telemetry-Daten sind unvollständig oder ungültig.")
-    elif isinstance(exc, TelemetryError):
-        st.error(
-            "Telemetry konnte nicht verarbeitet werden. Bitte andere Fahrer/Session testen."
-        )
-    elif isinstance(exc, ComparisonError):
-        st.error(
-            "Driver-Vergleich fehlgeschlagen. Daten konnten nicht sauber synchronisiert werden."
-        )
-    elif isinstance(exc, TimeCalculationError):
-        st.error("Time-Loss-Berechnung fehlgeschlagen.")
-    elif isinstance(exc, ReportGenerationError):
-        st.error("Executive Report konnte nicht erzeugt werden.")
-    elif isinstance(exc, CoachingEngineError):
-        st.error("Coaching-Analyse konnte nicht erstellt werden.")
-    else:
-        st.error(fallback)
 
 
 # -------------------------------------------------------
@@ -226,13 +186,7 @@ if st.button("Load session"):
             st.success(f"Loaded: {year} {track} {session_type}")
             st.rerun()
 
-    except (
-        SessionDataError,
-        DriverNotFoundError,
-        InvalidSessionError,
-        TelemetryError,
-        InvalidTelemetryError,
-    ) as e:
+    except DOMAIN_EXCEPTIONS as e:
         logger.error(
             "Session load failed (domain exception)",
             year=year,
@@ -241,7 +195,7 @@ if st.button("Load session"):
             error=str(e),
             exc_info=True,
         )
-        show_user_friendly_error(e, fallback="Error loading session.")
+        show_domain_error(e, fallback="Error loading session.")
     except Exception as e:
         logger.error(
             "Session load failed",
@@ -301,13 +255,7 @@ if st.session_state.get("drivers_full"):
             logger.info("Comparison complete", driver_a=driverA, driver_b=driverB)
             st.rerun()
 
-        except (
-            DriverNotFoundError,
-            TelemetryError,
-            InvalidTelemetryError,
-            ComparisonError,
-            TimeCalculationError,
-        ) as e:
+        except DOMAIN_EXCEPTIONS as e:
             logger.error(
                 "Driver comparison failed (domain exception)",
                 driver_a=driverA_full,
@@ -315,7 +263,7 @@ if st.session_state.get("drivers_full"):
                 error=str(e),
                 exc_info=True,
             )
-            show_user_friendly_error(e, fallback="Compare failed.")
+            show_domain_error(e, fallback="Compare failed.")
         except Exception as e:
             logger.error(
                 "Driver comparison failed",
@@ -512,9 +460,9 @@ if st.session_state.get("compare_result"):
                     track,
                 )
                 render_race_engineer_report(report_data)
-            except ReportGenerationError as e:
+            except DOMAIN_EXCEPTIONS as e:
                 logger.error("Report generation failed", error=str(e), exc_info=True)
-                show_user_friendly_error(e, fallback="Report could not be generated.")
+                show_domain_error(e, fallback="Report could not be generated.")
             except Exception as e:
                 logger.error("Unexpected report error", error=str(e), exc_info=True)
                 st.warning("Report temporarily unavailable.")
@@ -529,9 +477,9 @@ if st.session_state.get("compare_result"):
 
         try:
             suggestions = coaching_suggestions(tl, driverA, driverB)
-        except CoachingEngineError as e:
+        except DOMAIN_EXCEPTIONS as e:
             logger.error("Coaching engine failed", error=str(e), exc_info=True)
-            show_user_friendly_error(e, fallback="Coaching analysis unavailable.")
+            show_domain_error(e, fallback="Coaching analysis unavailable.")
             suggestions = []
         except Exception as e:
             logger.error("Unexpected coaching error", error=str(e), exc_info=True)
