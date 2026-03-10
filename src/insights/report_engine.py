@@ -10,11 +10,18 @@ import numpy as np
 
 from src.logging import get_logger
 from src.exceptions import ReportGenerationError
+from src.models import RaceEngineerReport
 
 logger = get_logger(__name__)
 
 
-def generate_race_engineer_report(tl_df, agg_types_df, driver_a, driver_b, track_name):
+def generate_race_engineer_report(
+    tl_df: pd.DataFrame,
+    agg_types_df: pd.DataFrame,
+    driver_a: str,
+    driver_b: str,
+    track_name: str,
+) -> dict[str, str | list[str]]:
     """
     Generate detailed natural-language race engineer report.
 
@@ -50,11 +57,12 @@ def generate_race_engineer_report(tl_df, agg_types_df, driver_a, driver_b, track
 
         if tl_df is None or tl_df.empty:
             logger.warning("No telemetry data for report", **log_context)
-            return {
-                "headline": "No Data Available",
-                "type_summary": ["Insufficient telemetry data."],
-                "key_fix": "Check data source.",
-            }
+            report = RaceEngineerReport(
+                headline="No Data Available",
+                type_summary=["Insufficient telemetry data."],
+                key_fix="Check data source.",
+            )
+            return report.model_dump()
 
         # 1. HEADLINE (Gap & Status)
         total_delta = tl_df["TimeLoss"].sum()
@@ -156,13 +164,12 @@ def generate_race_engineer_report(tl_df, agg_types_df, driver_a, driver_b, track
             **log_context,
         )
 
-        return {
-            "headline": headline,
-            "type_summary": (
-                summary_lines if summary_lines else ["Analysis inconclusive."]
-            ),
-            "key_fix": key_fix,
-        }
+        report = RaceEngineerReport(
+            headline=headline,
+            type_summary=summary_lines if summary_lines else ["Analysis inconclusive."],
+            key_fix=key_fix,
+        )
+        return report.model_dump()
 
     except Exception as e:
         msg = f"Report generation failed for {driver_a} vs {driver_b}"
