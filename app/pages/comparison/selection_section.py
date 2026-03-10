@@ -1,10 +1,16 @@
 from datetime import datetime
 
+import fastf1
 import streamlit as st
 
 from app.utils.error_ui import DOMAIN_EXCEPTIONS, show_domain_error
 from src.data.compare import compare_drivers_corner_level
-from src.data.load_data import get_tracks_for_year, load_session, load_telemetry
+from src.data.load_data import (
+    get_tracks_for_year,
+    hash_session_id,
+    load_session,
+    load_telemetry,
+)
 from src.insights.time_loss_engine import estimate_time_loss_per_corner
 from src.logging import get_logger
 
@@ -23,6 +29,24 @@ _FALLBACK_TRACKS = [
 ]
 
 
+@st.cache_resource(show_spinner="Loading session data...")
+def load_session_cached(year: int, track: str, session_type: str):
+    return load_session(year, track, session_type)
+
+
+@st.cache_data(
+    show_spinner="Processing telemetry...",
+    hash_funcs={fastf1.core.Session: hash_session_id},
+)
+def load_telemetry_cached(_session, driver_code: str):
+    return load_telemetry(_session, driver_code)
+
+
+@st.cache_data(show_spinner=False)
+def get_tracks_for_year_cached(year: int) -> list[str]:
+    return get_tracks_for_year(year)
+
+
 def render_session_selection() -> tuple[int, str, str]:
     st.markdown(
         "<h2 class='section-title'>Session Selection</h2>", unsafe_allow_html=True
@@ -38,7 +62,7 @@ def render_session_selection() -> tuple[int, str, str]:
     with col2:
         with st.spinner(f"Loading {year} Calendar..."):
             try:
-                tracks_for_year = get_tracks_for_year(year)
+                tracks_for_year = get_tracks_for_year_cached(year)
                 logger.debug(
                     "Tracks loaded", year=year, count=len(tracks_for_year or [])
                 )
@@ -72,7 +96,7 @@ def handle_session_load(year: int, track: str, session_type: str) -> None:
         logger.info(
             "Loading session", year=year, track=track, session_type=session_type
         )
-        session = load_session(year, track, session_type)
+        session = load_session_cached(year, track, session_type)
 
         if session is None:
             st.error("Could not load session data from FastF1.")
@@ -181,8 +205,8 @@ def handle_driver_comparison(driver_a_full: str, driver_b_full: str) -> None:
         logger.info("Comparing drivers", driver_a=driver_a, driver_b=driver_b)
 
         with st.spinner("Analyzing Telemetry..."):
-            tel_a = load_telemetry(session, driver_a)
-            tel_b = load_telemetry(session, driver_b)
+            tel_a = load_telemetry_cached(session, driver_a)
+            tel_b = load_telemetry_cached(session, driver_b)
 
             if tel_a is None or tel_b is None:
                 missing = []
