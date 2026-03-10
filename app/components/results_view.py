@@ -1,11 +1,15 @@
 import pandas as pd
 import re
 
+from src.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def clean_position(num):
     try:
         return int(float(num))
-    except:
+    except Exception:
         return num
 
 
@@ -35,6 +39,7 @@ def render_f1_table(df, title):
     """
     # 1. Handle Empty State
     if df is None or df.empty:
+        logger.info("No data for F1 table", title=title)
         # ADDED CLASS: glow-large
         return f"""
         <div class="glow-card-wrapper glow-large" style="max-width: 900px; margin: 10px auto;">
@@ -60,7 +65,20 @@ def render_f1_table(df, title):
         df["Time"] = df["Time"].apply(format_f1_time)
 
     # 3. Create HTML Table
-    html_table = df.to_html(index=False, classes="compact", border=0)
+    try:
+        html_table = df.to_html(index=False, classes="compact", border=0)
+    except Exception as e:
+        logger.error(
+            "Failed to convert results dataframe to HTML", title=title, error=str(e)
+        )
+        return f"""
+        <div class="glow-card-wrapper glow-large" style="max-width: 900px; margin: 10px auto;">
+            <div class="glow-card-content">
+                <h3 style="margin-top:0;">{title}</h3>
+                <p style="color:#AAA;">Could not render table.</p>
+            </div>
+        </div>
+        """
 
     # 4. Wrap with GLOW-LARGE
     return f"""
