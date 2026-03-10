@@ -6,6 +6,8 @@ import re
 import fastf1
 import time
 
+from src.logging import get_logger
+
 # -------------------
 # Load Data Methods
 # -------------------
@@ -20,6 +22,8 @@ from app.components.glow_card import GlowCard
 from src.data.latest_session import get_latest_sessions, get_season_results
 from app.components.results_view import render_f1_table
 
+logger = get_logger(__name__)
+
 
 @st.cache_resource
 def load_event_results(year, event_key):
@@ -27,7 +31,17 @@ def load_event_results(year, event_key):
     Load all event results (Q, SQ, S, R) only once.
     Fastest possible solution.
     """
-    return get_season_results(year, event_key)
+    try:
+        return get_season_results(year, event_key)
+    except Exception as e:
+        logger.error(
+            "Failed to load event results",
+            year=year,
+            event_key=event_key,
+            error=str(e),
+            exc_info=True,
+        )
+        return {}
 
 
 # ------------------------------------
@@ -53,7 +67,13 @@ st.markdown("<div class='main-content'>", unsafe_allow_html=True)
 # ------------------------------------
 # Logic: Load Data & Sessions
 # ------------------------------------
-session_data = get_latest_sessions()
+try:
+    session_data = get_latest_sessions()
+    logger.info("Latest sessions loaded")
+except Exception as e:
+    logger.error("Failed to load latest sessions", error=str(e), exc_info=True)
+    st.error("Could not load latest session data.")
+    st.stop()
 
 # Get events DataFrame
 events_df = session_data["events"]
@@ -122,7 +142,17 @@ if "event_index" not in st.session_state:
     st.session_state.event_index = 0
 
 # Get all events for the season
-all_events = fastf1.get_event_schedule(season_year)
+try:
+    all_events = fastf1.get_event_schedule(season_year)
+except Exception as e:
+    logger.error(
+        "Failed to load event schedule",
+        season_year=season_year,
+        error=str(e),
+        exc_info=True,
+    )
+    st.error("Could not load event schedule.")
+    st.stop()
 now = pd.Timestamp.now(tz="UTC")
 
 # Normalize dates
@@ -205,6 +235,11 @@ else:
             st.rerun()
 
     display_results = load_event_results(season_year, display_event_key)
+    logger.debug(
+        "Rendering event results",
+        season_year=season_year,
+        display_event_name=display_event_name,
+    )
 
     pairs = [
         ("S", "Sprint", "SQ", "Sprint Qualifying"),
@@ -288,5 +323,10 @@ def render_countdown():
 
 # Live ticking countdown
 while True:
-    render_countdown()
+    try:
+        render_countdown()
+    except Exception as e:
+        logger.error("Countdown render failed", error=str(e), exc_info=True)
+        st.warning("Countdown temporarily unavailable.")
+        break
     time.sleep(1)
