@@ -1,5 +1,6 @@
 import sys
 import os
+from datetime import datetime
 
 # Ensure project root is on sys.path so 'src' and 'app' are importable
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -82,10 +83,12 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     # Auswahl des Jahres triggert einen Rerun, damit die Streckenliste updated
+    _current_year = datetime.now().year
+    _year_options = list(range(_current_year, 2017, -1))  # current year → 2018
     year = st.selectbox(
         "Year",
-        [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018],
-        index=1,  # Default zu 2024
+        _year_options,
+        index=0,  # Default: aktuelles Jahr
     )
 
 with col2:
