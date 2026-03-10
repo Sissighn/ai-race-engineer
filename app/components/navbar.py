@@ -61,12 +61,10 @@ class Navbar:
         # Wir machen aus dem HTML einen einzigen, langen String ohne Einrückungen.
         clean_html = "".join([line.strip() for line in full_html.splitlines()])
 
-        # Nutze st.html (wenn vorhanden) oder st.markdown
+        # Immer st.markdown verwenden – st.html() rendert in einem iframe,
+        # wodurch position:fixed relativ zum iframe ist statt zum Browser-Viewport.
         try:
-            if hasattr(st, "html"):
-                st.html(clean_html)
-            else:
-                st.markdown(clean_html, unsafe_allow_html=True)
+            st.markdown(clean_html, unsafe_allow_html=True)
             logger.debug("Navbar rendered")
         except Exception as e:
             logger.error("Failed to render navbar", error=str(e), exc_info=True)

@@ -29,7 +29,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 100vw;
   height: 85px;
   background-color: #191919;
   border-bottom: 2px solid #7d0e0e; /* F1 Rot */
@@ -42,12 +42,12 @@
 
 .f1-nav-content {
   width: 100%;
-  max-width: 1600px;
   padding: 0 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: 100%;
+  box-sizing: border-box;
 }
 
 /* -------------------------------------------------------
