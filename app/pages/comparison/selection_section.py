@@ -1,17 +1,14 @@
 from datetime import datetime
 
-import fastf1
 import streamlit as st
 
 from app.utils.error_ui import DOMAIN_EXCEPTIONS, show_domain_error
-from src.data.compare import compare_drivers_corner_level
-from src.data.load_data import (
-    get_tracks_for_year,
-    hash_session_id,
-    load_session,
-    load_telemetry,
+from src.application.comparison_service import (
+    build_driver_map,
+    compare_session_drivers,
+    get_tracks_for_year_for_ui,
 )
-from src.insights.time_loss_engine import estimate_time_loss_per_corner
+from src.data.load_data import load_session
 from src.logging import get_logger
 
 logger = get_logger(__name__)
@@ -34,17 +31,9 @@ def load_session_cached(year: int, track: str, session_type: str):
     return load_session(year, track, session_type)
 
 
-@st.cache_data(
-    show_spinner="Processing telemetry...",
-    hash_funcs={fastf1.core.Session: hash_session_id},
-)
-def load_telemetry_cached(_session, driver_code: str):
-    return load_telemetry(_session, driver_code)
-
-
 @st.cache_data(show_spinner=False)
 def get_tracks_for_year_cached(year: int) -> list[str]:
-    return get_tracks_for_year(year)
+    return get_tracks_for_year_for_ui(year)
 
 
 def render_session_selection() -> tuple[int, str, str]:
@@ -102,48 +91,12 @@ def handle_session_load(year: int, track: str, session_type: str) -> None:
             st.error("Could not load session data from FastF1.")
             return
 
-        drivers_with_cardata: set[str] = set()
-        if hasattr(session, "car_data") and session.car_data:
-            try:
-                for drv_num, df in session.car_data.items():
-                    if df is not None and not df.empty:
-                        drivers_with_cardata.add(str(drv_num))
-            except Exception:
-                pass
-
-        if hasattr(session, "laps"):
-            try:
-                unique_drivers = sorted(session.laps["Driver"].unique())
-            except Exception:
-                unique_drivers = []
-        else:
-            unique_drivers = []
-
-        driver_map: dict[str, str] = {}
-        for code in unique_drivers:
-            try:
-                info = session.get_driver(code)
-                fn = info.get("FirstName", info.get("given_name", ""))
-                ln = info.get("LastName", info.get("family_name", ""))
-                drv_num = str(info.get("DriverNumber", ""))
-                has_tel = (not drivers_with_cardata) or drv_num in drivers_with_cardata
-                label = f"{fn} {ln} ({code})" if has_tel else f"⚠️ {fn} {ln} ({code})"
-                driver_map[label] = code
-            except Exception as e:
-                logger.warning(
-                    "Failed to resolve driver metadata",
-                    driver_code=code,
-                    error=str(e),
-                )
-                driver_map[code] = code
+        drivers_full, driver_map, no_tel_drivers = build_driver_map(session)
 
         st.session_state["session"] = session
-        st.session_state["drivers_full"] = list(driver_map.keys())
+        st.session_state["drivers_full"] = drivers_full
         st.session_state["driver_map"] = driver_map
 
-        no_tel_drivers = [
-            code for label, code in driver_map.items() if label.startswith("⚠️")
-        ]
         if no_tel_drivers:
             st.warning(
                 f"⚠️ No car telemetry available for: **{', '.join(no_tel_drivers)}** "
@@ -205,33 +158,24 @@ def handle_driver_comparison(driver_a_full: str, driver_b_full: str) -> None:
         logger.info("Comparing drivers", driver_a=driver_a, driver_b=driver_b)
 
         with st.spinner("Analyzing Telemetry..."):
-            tel_a = load_telemetry_cached(session, driver_a)
-            tel_b = load_telemetry_cached(session, driver_b)
+            service_result = compare_session_drivers(session, driver_a, driver_b)
 
-            if tel_a is None or tel_b is None:
-                missing = []
-                if tel_a is None:
-                    missing.append(driver_a)
-                if tel_b is None:
-                    missing.append(driver_b)
+            if service_result["missing"]:
                 st.error(
-                    f"❌ No car telemetry data available for: **{', '.join(missing)}** "
+                    f"❌ No car telemetry data available for: **{', '.join(service_result['missing'])}** "
                     "in this session. The F1 data API does not provide car data for "
                     "every driver in every session. Please select a different driver."
                 )
                 st.stop()
 
-            comp = compare_drivers_corner_level(session, driver_a, driver_b)
-            tl = estimate_time_loss_per_corner(comp, driver_a, driver_b)
-
         st.session_state["compare_result"] = {
             "session": session,
             "driverA": driver_a,
             "driverB": driver_b,
-            "telA": tel_a,
-            "telB": tel_b,
-            "comp": comp,
-            "tl": tl,
+            "telA": service_result["telA"],
+            "telB": service_result["telB"],
+            "comp": service_result["comp"],
+            "tl": service_result["tl"],
         }
         logger.info("Comparison complete", driver_a=driver_a, driver_b=driver_b)
         st.rerun()
