@@ -1,12 +1,17 @@
 import streamlit as st
 import re
 
+from src.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 def render_race_engineer_report(report_data):
     """
     Renders the report data in a stylized container.
     """
     if not report_data:
+        logger.info("No report data provided")
         return
 
     # 1. CSS Styles definieren
@@ -90,4 +95,11 @@ def render_race_engineer_report(report_data):
 </div>
 """
 
-    st.markdown(html_content.strip(), unsafe_allow_html=True)
+    try:
+        st.markdown(html_content.strip(), unsafe_allow_html=True)
+        logger.debug("Race engineer report rendered")
+    except Exception as e:
+        logger.error(
+            "Failed to render race engineer report", error=str(e), exc_info=True
+        )
+        st.warning("Report could not be rendered.")
