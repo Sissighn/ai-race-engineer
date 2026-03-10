@@ -7,6 +7,7 @@ from src.application.home_service import (
     load_event_results as load_event_results_core,
 )
 from src.logging import get_logger
+from src.models import HomeContextPayload
 
 logger = get_logger(__name__)
 
@@ -36,7 +37,7 @@ def load_event_results(year: int, event_key: str) -> dict:
 
 
 @st.cache_data(ttl=600, show_spinner="Loading F1 schedule...")
-def get_home_context_cached(year: int | None = None) -> dict[str, object]:
+def get_home_context_cached(year: int | None = None) -> HomeContextPayload:
     return get_home_context(year)
 
 
@@ -45,7 +46,7 @@ def get_season_started_events_cached(season_year: int) -> list:
     return get_season_started_events(season_year)
 
 
-def load_home_context() -> dict:
+def load_home_context() -> HomeContextPayload:
     try:
         session_data = get_home_context_cached()
         logger.info("Latest sessions loaded")

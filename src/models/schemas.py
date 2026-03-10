@@ -76,3 +76,15 @@ class CornerAnalysisPayload(BaseModel):
     tl_classified: Optional[pd.DataFrame] = None
     agg_types: Optional[pd.DataFrame] = None
     advice_list: list[str] = Field(default_factory=list)
+
+
+class HomeContextPayload(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    events_df: pd.DataFrame
+    latest_completed_idx: int
+    next_session_name: str
+    next_session_time: Optional[pd.Timestamp] = None
+    display_event: pd.Series
+    season_year: int
+    event_key: str

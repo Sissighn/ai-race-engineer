@@ -27,12 +27,25 @@ def run_page() -> None:
     st.markdown("<div class='main-content'>", unsafe_allow_html=True)
 
     context = load_home_context()
+
+    if hasattr(context, "display_event"):
+        display_event = context.display_event
+        next_session_name = context.next_session_name
+        season_year = context.season_year
+        next_session_time = context.next_session_time
+    else:
+        # Backward compatibility for dict payloads
+        display_event = context["display_event"]
+        next_session_name = context["next_session_name"]
+        season_year = context["season_year"]
+        next_session_time = context["next_session_time"]
+
     render_latest_gp(
-        display_event=context["display_event"],
-        next_session_name=context["next_session_name"],
+        display_event=display_event,
+        next_session_name=next_session_name,
     )
 
-    started_events = get_started_events_for_season(context["season_year"])
-    render_results_tables(context["season_year"], started_events)
+    started_events = get_started_events_for_season(season_year)
+    render_results_tables(season_year, started_events)
 
-    render_countdown_section(context["next_session_time"])
+    render_countdown_section(next_session_time)
