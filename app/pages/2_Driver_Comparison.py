@@ -414,7 +414,7 @@ if st.session_state.get("compare_result"):
                     st.info("No major corner type dominance found.")
                 else:
                     for advice in advice_list:
-                        st.info(advice, icon="🏎️")
+                        st.markdown(f"- {advice}")
 
                 st.markdown("###### Breakdown")
 
@@ -422,7 +422,7 @@ if st.session_state.get("compare_result"):
                 st.dataframe(
                     agg_types.style.format({"TimeLoss": "{:.3f}s"}),
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                 )
         else:
             # Fallback if classification failed
@@ -488,7 +488,7 @@ if st.session_state.get("compare_result"):
         )
         # Using 'stretch' for full width in newer Streamlit versions
         # Or None if stretch causes issues on your version
-        st.dataframe(tl, use_container_width=True)
+        st.dataframe(tl, width="stretch")
 
     # -------------------------------------------------------
     # 4. COACHING TAB
