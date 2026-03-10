@@ -22,7 +22,6 @@ cache/
 
 # ---- Environment / Secrets ----
 .env
-.env.*
 
 # ---- Build / Distribution ----
 build/
