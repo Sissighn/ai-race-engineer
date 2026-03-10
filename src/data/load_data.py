@@ -1,18 +1,15 @@
 import os
-import shutil
 from typing import Any, Optional
 
 import fastf1
 import pandas as pd
 import numpy as np
-import streamlit as st
 
 from src.logging import get_logger
 from src.exceptions import (
     SessionDataError,
     TelemetryError,
     FastF1APIError,
-    CacheCorruptionError,
 )
 from src.config import settings
 
@@ -107,7 +104,6 @@ def clear_specific_session_cache(year: int, grand_prix: str, session_type: str) 
 # ---------------------------------------------------------
 
 
-@st.cache_resource(show_spinner="Loading session data...")
 def load_session(year: int, grand_prix: str, session_type: str) -> Any:
     """
     Load a FastF1 session with corruption handling and logging.
@@ -150,9 +146,6 @@ def load_session(year: int, grand_prix: str, session_type: str) -> Any:
         if session.date > now:
             msg = f"Session has not occurred yet: {session.date.date()}"
             logger.warning(msg, **log_context)
-            st.warning(
-                f"⚠️ Session '{grand_prix}' hasn't happened yet ({session.date.date()})."
-            )
             raise SessionDataError(msg)
 
         # 3. Load data (normal attempt)
@@ -185,21 +178,18 @@ def load_session(year: int, grand_prix: str, session_type: str) -> Any:
                     "Session loaded successfully after cache bypass",
                     **log_context,
                 )
-                st.info("✅ Session loaded (cache was cleared)")
                 return session
 
             except Exception as retry_err:
                 fastf1.Cache.enable_cache(cache_path)
                 msg = f"Failed to load session even after cache bypass: {retry_err}"
                 logger.error(msg, error=str(retry_err), **log_context)
-                st.error(f"❌ {msg}")
                 raise FastF1APIError(msg) from retry_err
 
         else:
             # Other error (e.g., API down, network issue)
             msg = f"Error loading session: {e}"
             logger.error(msg, error=error_msg, **log_context)
-            st.error(f"Error loading session: {e}")
             raise FastF1APIError(msg) from e
 
 
@@ -208,10 +198,6 @@ def load_session(year: int, grand_prix: str, session_type: str) -> Any:
 # ---------------------------------------------------------
 
 
-@st.cache_data(
-    show_spinner="Processing telemetry...",
-    hash_funcs={fastf1.core.Session: hash_session_id},
-)
 def load_telemetry(session: Any, driver_code: str) -> Optional[pd.DataFrame]:
     """
     Load and process telemetry for a specific driver's fastest lap.
@@ -292,10 +278,6 @@ def load_telemetry(session: Any, driver_code: str) -> Optional[pd.DataFrame]:
 # ---------------------------------------------------------
 
 
-@st.cache_data(
-    show_spinner="Loading position data...",
-    hash_funcs={fastf1.core.Session: hash_session_id},
-)
 def load_telemetry_with_position(
     session: Any, driver_code: str
 ) -> Optional[pd.DataFrame]:
@@ -400,7 +382,6 @@ def load_telemetry_with_position(
 # ---------------------------------------------------------
 
 
-@st.cache_data(show_spinner=False)
 def get_tracks_for_year(year: int) -> list[str]:
     """
     Get list of tracks for a given championship year.

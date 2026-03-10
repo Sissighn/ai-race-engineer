@@ -7,10 +7,10 @@ from src.data import load_data
 from src.exceptions import FastF1APIError, SessionDataError, TelemetryError
 
 
-RAW_LOAD_SESSION = load_data.load_session.__wrapped__
-RAW_LOAD_TELEMETRY = load_data.load_telemetry.__wrapped__
-RAW_LOAD_TELEMETRY_WITH_POSITION = load_data.load_telemetry_with_position.__wrapped__
-RAW_GET_TRACKS_FOR_YEAR = load_data.get_tracks_for_year.__wrapped__
+RAW_LOAD_SESSION = load_data.load_session
+RAW_LOAD_TELEMETRY = load_data.load_telemetry
+RAW_LOAD_TELEMETRY_WITH_POSITION = load_data.load_telemetry_with_position
+RAW_GET_TRACKS_FOR_YEAR = load_data.get_tracks_for_year
 
 
 class _FakeEvent:
