@@ -8,6 +8,9 @@ from matplotlib.colors import LinearSegmentedColormap
 import streamlit as st
 
 from src.data.load_data import load_telemetry_with_position
+from src.logging import get_logger
+
+logger = get_logger(__name__)
 
 # ---------------------------------------------------------
 # GLOBAL DARK THEME COLORS
@@ -79,6 +82,7 @@ def show_track_outline_svg(track: str):
     if os.path.exists(svg_path):
         st.image(svg_path, use_container_width=True)
     else:
+        logger.info("Track outline SVG not found", track=track, svg_path=svg_path)
         st.info(f"No SVG outline found for {track}")
 
 
@@ -86,10 +90,24 @@ def show_track_outline_svg(track: str):
 # 3. MAIN FUNCTION — Track Map (Dark Mode)
 # ---------------------------------------------------------
 def plot_track_map(session, driver_code: str, track: str, mode="speed"):
+    logger.debug("Plotting track map", driver_code=driver_code, track=track, mode=mode)
     tel = load_telemetry_with_position(session, driver_code)
+
+    if tel is None or tel.empty:
+        logger.warning(
+            "No telemetry for track map", driver_code=driver_code, track=track
+        )
+        st.warning(f"No telemetry with position data for {driver_code}.")
+        return
 
     for col in ["X", "Y", "Speed"]:
         if col not in tel.columns:
+            logger.error(
+                "Telemetry missing required track-map column",
+                missing_column=col,
+                driver_code=driver_code,
+                track=track,
+            )
             st.error(f"Telemetry missing '{col}' for track map.")
             return
 
@@ -100,6 +118,7 @@ def plot_track_map(session, driver_code: str, track: str, mode="speed"):
         values = tel["Speed"].values
     else:
         values = tel["Speed"].values
+        logger.warning("Unsupported track map mode, falling back to speed", mode=mode)
         st.warning(f"Mode '{mode}' not implemented. Using Speed instead.")
 
     # --------------- FIGURE ------------------
@@ -112,6 +131,7 @@ def plot_track_map(session, driver_code: str, track: str, mode="speed"):
     try:
         _line_heatmap_dark(x, y, values, ax, fig)
     except Exception as e:
+        logger.error("Track map draw error", error=str(e), exc_info=True)
         st.error(f"Track map draw error: {e}")
         plt.close(fig)
         return
@@ -120,4 +140,5 @@ def plot_track_map(session, driver_code: str, track: str, mode="speed"):
     ax.set_title(f"{track} – {driver_code}", fontsize=10, pad=6, color=TEXT_COLOR)
 
     st.pyplot(fig)
+    logger.debug("Track map rendered", driver_code=driver_code, track=track)
     plt.close(fig)
