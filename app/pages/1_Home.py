@@ -2,11 +2,17 @@ import streamlit as st
 import pandas as pd
 import sys
 import os
-import re
 import fastf1
 import time
 
 from src.logging import get_logger
+from src.exceptions import (
+    SessionDataError,
+    FastF1APIError,
+    APIError,
+    DataError,
+    CacheError,
+)
 
 # -------------------
 # Load Data Methods
@@ -25,6 +31,24 @@ from app.components.results_view import render_f1_table
 logger = get_logger(__name__)
 
 
+def show_home_error(
+    exc: Exception, fallback: str = "Ein unerwarteter Fehler ist aufgetreten."
+) -> None:
+    """Maps domain exceptions to clear and friendly UI messages on Home page."""
+    if isinstance(exc, SessionDataError):
+        st.error("Session-Daten konnten nicht geladen werden.")
+    elif isinstance(exc, (FastF1APIError, APIError)):
+        st.error(
+            "FastF1 API ist aktuell nicht erreichbar. Bitte später erneut versuchen."
+        )
+    elif isinstance(exc, CacheError):
+        st.error("Cache-Fehler erkannt. Bitte Seite neu laden.")
+    elif isinstance(exc, DataError):
+        st.error("Event-Daten sind unvollständig oder ungültig.")
+    else:
+        st.error(fallback)
+
+
 @st.cache_resource
 def load_event_results(year, event_key):
     """
@@ -33,6 +57,15 @@ def load_event_results(year, event_key):
     """
     try:
         return get_season_results(year, event_key)
+    except (SessionDataError, FastF1APIError, APIError, DataError, CacheError) as e:
+        logger.error(
+            "Failed to load event results (domain exception)",
+            year=year,
+            event_key=event_key,
+            error=str(e),
+            exc_info=True,
+        )
+        return {}
     except Exception as e:
         logger.error(
             "Failed to load event results",
@@ -70,6 +103,18 @@ st.markdown("<div class='main-content'>", unsafe_allow_html=True)
 try:
     session_data = get_latest_sessions()
     logger.info("Latest sessions loaded")
+except (SessionDataError, FastF1APIError, APIError, DataError, CacheError) as e:
+    logger.error(
+        "Failed to load latest sessions (domain exception)", error=str(e), exc_info=True
+    )
+    show_home_error(e, fallback="Could not load latest session data.")
+    st.stop()
+except KeyError as e:
+    logger.error(
+        "Latest session payload missing key", missing_key=str(e), exc_info=True
+    )
+    st.error("Session-Daten haben ein ungültiges Format.")
+    st.stop()
 except Exception as e:
     logger.error("Failed to load latest sessions", error=str(e), exc_info=True)
     st.error("Could not load latest session data.")
@@ -144,6 +189,15 @@ if "event_index" not in st.session_state:
 # Get all events for the season
 try:
     all_events = fastf1.get_event_schedule(season_year)
+except (FastF1APIError, APIError, SessionDataError, DataError, CacheError) as e:
+    logger.error(
+        "Failed to load event schedule (domain exception)",
+        season_year=season_year,
+        error=str(e),
+        exc_info=True,
+    )
+    show_home_error(e, fallback="Could not load event schedule.")
+    st.stop()
 except Exception as e:
     logger.error(
         "Failed to load event schedule",
