@@ -195,7 +195,7 @@ if st.button("Load session"):
             error=str(e),
             exc_info=True,
         )
-        show_domain_error(e, fallback="Error loading session.")
+        show_domain_error(e, fallback="Error loading session.", context="comparison")
     except Exception as e:
         logger.error(
             "Session load failed",
@@ -263,7 +263,7 @@ if st.session_state.get("drivers_full"):
                 error=str(e),
                 exc_info=True,
             )
-            show_domain_error(e, fallback="Compare failed.")
+            show_domain_error(e, fallback="Compare failed.", context="comparison")
         except Exception as e:
             logger.error(
                 "Driver comparison failed",
@@ -462,7 +462,11 @@ if st.session_state.get("compare_result"):
                 render_race_engineer_report(report_data)
             except DOMAIN_EXCEPTIONS as e:
                 logger.error("Report generation failed", error=str(e), exc_info=True)
-                show_domain_error(e, fallback="Report could not be generated.")
+                show_domain_error(
+                    e,
+                    fallback="Report could not be generated.",
+                    context="comparison",
+                )
             except Exception as e:
                 logger.error("Unexpected report error", error=str(e), exc_info=True)
                 st.warning("Report temporarily unavailable.")
@@ -479,7 +483,11 @@ if st.session_state.get("compare_result"):
             suggestions = coaching_suggestions(tl, driverA, driverB)
         except DOMAIN_EXCEPTIONS as e:
             logger.error("Coaching engine failed", error=str(e), exc_info=True)
-            show_domain_error(e, fallback="Coaching analysis unavailable.")
+            show_domain_error(
+                e,
+                fallback="Coaching analysis unavailable.",
+                context="comparison",
+            )
             suggestions = []
         except Exception as e:
             logger.error("Unexpected coaching error", error=str(e), exc_info=True)

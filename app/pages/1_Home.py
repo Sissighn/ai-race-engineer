@@ -83,7 +83,11 @@ except DOMAIN_EXCEPTIONS as e:
     logger.error(
         "Failed to load latest sessions (domain exception)", error=str(e), exc_info=True
     )
-    show_domain_error(e, fallback="Could not load latest session data.")
+    show_domain_error(
+        e,
+        fallback="Could not load latest session data.",
+        context="home",
+    )
     st.stop()
 except KeyError as e:
     logger.error(
@@ -172,7 +176,11 @@ except DOMAIN_EXCEPTIONS as e:
         error=str(e),
         exc_info=True,
     )
-    show_domain_error(e, fallback="Could not load event schedule.")
+    show_domain_error(
+        e,
+        fallback="Could not load event schedule.",
+        context="home",
+    )
     st.stop()
 except Exception as e:
     logger.error(
