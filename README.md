@@ -1,152 +1,171 @@
 # AI Race Engineer
 
+[![CI](https://github.com/Sissighn/ai-race-engineer/actions/workflows/ci.yml/badge.svg)](https://github.com/Sissighn/ai-race-engineer/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.31+-red)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.31%2B-red)
 ![FastF1](https://img.shields.io/badge/Data-FastF1-orange)
+![Pydantic](https://img.shields.io/badge/Validation-Pydantic-1f6feb)
+![Tests](https://img.shields.io/badge/Tests-Pytest-0A9EDC)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-AI Race Engineer is a specialized telemetry analysis platform designed to simulate the workflow of a Formula 1 performance engineer. This application bridges the gap between raw data acquisition and actionable motorsport insights by leveraging the FastF1 API.
+AI Race Engineer is a Formula 1 telemetry analysis platform that simulates the workflow of a race/performance engineer. It transforms raw telemetry into corner-level insights, time-loss diagnostics, driver-style profiling, and actionable coaching recommendations.
 
 ---
 
-## Features
+## Current Project Status
 
-### 1. Telemetry & Performance Analysis
+This repository now includes:
 
-- **Corner-Level Granularity:** Algorithms automatically segment track data to calculate time loss and speed deltas for specific corners.
-- **Micro-Telemetry:** Visualization of throttle, brake, gear, and speed traces synchronized by track distance.
-- **Delta Lap Calculation:** Computation of live time deltas between two drivers to identify dominance areas.
+- Centralized structured logging (`structlog`)
+- Standardized domain exceptions and UI-friendly error mapping
+- Environment-based configuration (`.env` + settings module)
+- Type hints across core modules
+- Pydantic schemas for validated payloads
+- Automated test suite (`pytest` + `pytest-cov`)
+- CI pipeline with GitHub Actions
 
-### 2. Algorithmic Coaching Assistant
+---
 
-- **Automated Insights:** A logic engine processes telemetry differentials to generate text-based driving advice.
-- **Pattern Recognition:** Identifies specific driver weaknesses, such as early braking points or lower minimum apex speeds compared to a reference lap.
+## Key Features
 
-### 3. Session Management & UI
+### Telemetry & Performance Analysis
 
-- **Live Data Integration:** Real-time countdowns and result fetching for active Grand Prix sessions.
-- **Custom Design System:** Implementation of a bespoke dark theme using external CSS injection.
+- Corner segmentation and corner-level delta analytics
+- Time loss estimation per corner
+- Delta lap comparison between two drivers
+- Speed, throttle, brake, gear, and track map visualizations
+
+### Coaching & Reporting
+
+- Rule-based driving coaching suggestions
+- Driver DNA profiling (aggressiveness, smoothness, etc.)
+- Executive race engineer summary report
+
+### Session Management
+
+- FastF1 schedule/session integration
+- Dynamic track loading by season
+- Local caching support for faster repeated analysis
 
 ---
 
 ## Tech Stack
 
-### Core Languages & Frameworks
-
-- **Core:** Python 3.11+
-- **Frontend/App Framework:** Streamlit (used for rapid application development and deployment)
-- **Styling:** Custom CSS (Externalized for clean code, combined with the Streamlit theming system)
-
-### Data Handling & Analysis
-
-- **Data Source:** FastF1 API (Used to retrieve real-time and historical F1 telemetry and session data)
-- **Data Processing:** Pandas, NumPy (For efficient handling and manipulation of large time-series and tabular data)
-- **Telemetry Processing:** Custom Python logic (Calculations for time loss and corner segmentation)
-
-### Visualization & Quality
-
-- **Visualization:** Plotly Express / Graph Objects (Used for creating interactive, dynamic, and publication-ready charts like speed traces and bar charts)
-- **Code Quality:** Black (Python Code Formatter)
+- **Language:** Python 3.11+
+- **App Framework:** Streamlit
+- **Data Source:** FastF1
+- **Data/Math:** Pandas, NumPy, SciPy
+- **Visualization:** Plotly, Matplotlib
+- **Validation:** Pydantic
+- **Logging:** structlog
+- **Testing:** pytest, pytest-cov
 
 ---
 
 ## Project Structure
 
-The project follows a strict separation of concerns, isolating business logic, data retrieval, and user interface components.
-
 ```bash
-AI-RACE-ENGINEER/
-├── .streamlit/          # Server configuration (Global Theme & Sidebar settings)
-│   └── config.toml
-├── app/                 # Frontend Application Layer
-│   ├── assets/          # Static assets (External CSS, Images)
-│   ├── components/      # Reusable UI modules (Charts, Maps, Navbar)
-│   ├── pages/           # Streamlit multipage routing
-│   ├── utils/           # Utility functions (UI Loaders, Formatters)
-│   └── main.py          # Application entry point
-├── src/                 # Business Logic & Backend Layer
-│   ├── data/            # Data fetching, caching, and preprocessing
-│   └── insights/        # Mathematical engines (Time Loss, Coaching algorithms)
-├── cache/               # Local filesystem cache for API responses
-├── data/                # Persistent data storage
-├── notebooks/           # Jupyter notebooks for exploratory data analysis (EDA)
-├── venv/                # Virtual Environment
-├── .gitignore           # Git configuration
-├── requirements.txt     # Python dependencies
-└── README.md            # Project documentation
+ai-race-engineer/
+├── .github/workflows/      # CI pipeline (GitHub Actions)
+├── app/                    # UI layer (Streamlit pages/components)
+│   ├── assets/
+│   ├── components/
+│   ├── pages/
+│   ├── utils/
+│   └── main.py
+├── src/                    # Core logic layer
+│   ├── config/             # Settings management
+│   ├── data/               # Data loading and preprocessing
+│   ├── insights/           # Analysis/report engines
+│   ├── logging/            # Logging bootstrap/config
+│   ├── models/             # Pydantic schemas
+│   └── exceptions.py       # Domain exception hierarchy
+├── tests/                  # Unit tests
+├── cache/
+├── data/
+├── notebooks/
+├── requirements.txt
+├── pytest.ini
+└── README.md
 ```
 
 ---
 
-## Technical Highlights
+## Getting Started
 
-- Modular Architecture: The codebase is split into app/ (Presentation Layer) and src/ (Logic Layer), ensuring that UI changes do not affect data processing algorithms.
+### 1) Clone
 
-- Data Caching: Implements advanced caching strategies to minimize API calls to FastF1 and reduce load times for heavy telemetry datasets.
-
-- Clean Code Standards:
-
-* Adherence to PEP 8 standards using the Black formatter.
-
-* Strict typing (Type Hints) used throughout the backend logic.
-
-* Externalized CSS styling to maintain readable Python code.
-
----
-
-## Installation
-
-Prerequisites:
-
-- Python 3.11 or higher
-- pip (Python Package Installer)
-
----
-
-1. Clone the repository
-
-```Bash
-git clone [https://github.com/Sissighn/ai-race-engineer.git](https://github.com/Sissighn/ai-race-engineer.git)
+```bash
+git clone https://github.com/Sissighn/ai-race-engineer.git
 cd ai-race-engineer
 ```
 
----
+### 2) Create and activate virtual environment
 
-2. Set up the environment
-   It is recommended to use a virtual environment.
-
-```Bash
+```bash
 python -m venv venv
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
+# macOS/Linux
 source venv/bin/activate
+# Windows (PowerShell)
+venv\Scripts\Activate.ps1
 ```
 
----
+### 3) Install dependencies
 
-3. Install dependencies
-
-```Bash
+```bash
 pip install -r requirements.txt
 ```
 
----
+### 4) Run the app
 
-4. Run the application
-   Execute the main entry point from the root directory:
-
-```Bash
+```bash
 streamlit run app/main.py
 ```
 
 ---
 
-## Future Roadmap
+## Testing
 
-- Tyre Degradation Model: Implementation of lap time drop-off analysis to predict optimal pit windows.
-- Race Strategy Simulation: Monte Carlo simulation for strategic decision-making.
-- Weather Integration: Layering track temperature and wind data onto performance metrics.
+Run tests:
+
+```bash
+pytest
+```
+
+Run tests with coverage:
+
+```bash
+pytest --cov=src --cov=app/components --cov-report=term-missing
+```
+
+---
+
+## CI/CD (GitHub Actions)
+
+The CI workflow is defined in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+It currently performs:
+
+1. Dependency installation
+2. Import smoke-check
+3. Test execution with coverage and a minimum threshold
+
+Pipeline triggers on pushes and pull requests to `main`.
+
+---
+
+## Configuration
+
+Use environment variables for runtime behavior. See [.env.example](.env.example) if present.
+
+Important settings include:
+
+- `ENVIRONMENT`
+- `LOG_LEVEL`
+- `FASTF1_CACHE_ENABLED`
+- `FASTF1_REQUEST_TIMEOUT`
+- `SESSION_CACHE_TTL`
+- `TELEMETRY_CACHE_TTL`
 
 ---
 
@@ -154,4 +173,4 @@ streamlit run app/main.py
 
 MIT License © 2026 Setayesh Golshan
 
-This project is unofficial and not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.
+This project is unofficial and is not associated with Formula 1. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX, and related marks are trademarks of Formula One Licensing B.V.
