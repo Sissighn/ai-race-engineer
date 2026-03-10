@@ -69,8 +69,6 @@ def show_domain_error(
         )
     elif isinstance(exc, CacheError):
         st.error("Cache-Fehler erkannt. Bitte Seite neu laden.")
-    elif isinstance(exc, DataError):
-        st.error("Event-Daten sind unvollständig oder ungültig.")
     elif isinstance(exc, TelemetryError):
         if context == "comparison":
             st.error(
@@ -78,6 +76,8 @@ def show_domain_error(
             )
         else:
             st.error("Telemetry-Daten konnten nicht verarbeitet werden.")
+    elif isinstance(exc, DataError):
+        st.error("Event-Daten sind unvollständig oder ungültig.")
     elif isinstance(exc, ComparisonError):
         if context == "comparison":
             st.error(

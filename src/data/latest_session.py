@@ -39,8 +39,8 @@ def get_latest_sessions(year: Optional[int] = None) -> dict[str, object]:
     logger.info(f"Loading F1 schedule for year {year}")
 
     try:
-        # Full F1 calendar for the season
-        events = fastf1.get_event_schedule(year)
+        # Full F1 calendar for the season (exclude pre-season testing)
+        events = fastf1.get_event_schedule(year, include_testing=False)
     except Exception as e:
         logger.error(f"Failed to load event schedule: {e}")
         raise ValueError(f"Could not load F1 schedule for {year}: {e}")
