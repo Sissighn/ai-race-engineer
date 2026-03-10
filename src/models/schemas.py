@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+from typing import Optional
+
+import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class RaceEngineerReport(BaseModel):
+    headline: str = Field(..., min_length=1)
+    type_summary: list[str] = Field(default_factory=list)
+    key_fix: str = Field(..., min_length=1)
+
+
+class DriverDNAMetrics(BaseModel):
+    aggressiveness: float = Field(..., ge=0, le=100)
+    cornering: float = Field(..., ge=0, le=100)
+    smoothness: float = Field(..., ge=0, le=100)
+    full_throttle: float = Field(..., ge=0, le=100)
+    gear_workload: float = Field(..., ge=0, le=100)
+
+    def to_legacy_dict(self) -> dict[str, float]:
+        return {
+            "Aggressiveness": round(self.aggressiveness, 1),
+            "Cornering": round(self.cornering, 1),
+            "Smoothness": round(self.smoothness, 1),
+            "FullThrottle": round(self.full_throttle, 1),
+            "GearWorkload": round(self.gear_workload, 1),
+        }
+
+
+class LatestSessionsPayload(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    events: pd.DataFrame
+    latest_completed_index: int
+    next_session_name: str
+    next_session_time: Optional[pd.Timestamp] = None
+    next_event_index: Optional[int] = None
+
+
+class SeasonResultsPayload(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    Q: Optional[pd.DataFrame] = None
+    SQ: Optional[pd.DataFrame] = None
+    S: Optional[pd.DataFrame] = None
+    R: Optional[pd.DataFrame] = None
