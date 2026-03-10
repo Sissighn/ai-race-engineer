@@ -11,15 +11,16 @@ Analyzes telemetry patterns to extract driver characteristics:
 
 import numpy as np
 import pandas as pd
-from typing import Optional, Dict
+from typing import Optional
 
 from src.logging import get_logger
 from src.exceptions import AnalysisError
+from src.models import DriverDNAMetrics
 
 logger = get_logger(__name__)
 
 
-def calculate_driver_dna(telemetry: Optional[pd.DataFrame]) -> Dict[str, float]:
+def calculate_driver_dna(telemetry: Optional[pd.DataFrame]) -> dict[str, float]:
     """
     Extrahiert Fahrercharakteristiken aus der Telemetrie.
 
@@ -78,13 +79,14 @@ def calculate_driver_dna(telemetry: Optional[pd.DataFrame]) -> Dict[str, float]:
         else:
             gear_workload = 50
 
-        result = {
-            "Aggressiveness": round(aggressiveness, 1),
-            "Cornering": round(cornering_ability, 1),
-            "Smoothness": round(smoothness, 1),
-            "FullThrottle": round(full_throttle_score, 1),
-            "GearWorkload": round(gear_workload, 1),
-        }
+        dna_model = DriverDNAMetrics(
+            aggressiveness=float(np.clip(aggressiveness, 0, 100)),
+            cornering=float(np.clip(cornering_ability, 0, 100)),
+            smoothness=float(np.clip(smoothness, 0, 100)),
+            full_throttle=float(np.clip(full_throttle_score, 0, 100)),
+            gear_workload=float(np.clip(gear_workload, 0, 100)),
+        )
+        result = dna_model.to_legacy_dict()
 
         logger.info("Driver DNA calculated", metrics=result, **log_context)
         return result
@@ -95,7 +97,12 @@ def calculate_driver_dna(telemetry: Optional[pd.DataFrame]) -> Dict[str, float]:
         raise AnalysisError(msg) from e
 
 
-def compare_driver_dna(dna_a: Dict, dna_b: Dict, driver_a: str, driver_b: str) -> Dict:
+def compare_driver_dna(
+    dna_a: dict[str, float],
+    dna_b: dict[str, float],
+    driver_a: str,
+    driver_b: str,
+) -> dict[str, float]:
     """
     Vergleicht zwei DNA-Profile und berechnet die Differenzen (Deltas).
     """
