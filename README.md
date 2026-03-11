@@ -10,8 +10,7 @@
 
 AI Race Engineer is a Formula 1 telemetry analysis platform that simulates the workflow of a race/performance engineer. It transforms raw telemetry into corner-level insights, time-loss diagnostics, driver-style profiling, and actionable coaching recommendations.
 
-![Driver Comparison](./docs/4.png)
----
+## ![Driver Comparison](./docs/4.png)
 
 ## Current Project Status
 
@@ -79,9 +78,11 @@ ai-race-engineer/
 │   ├── utils/
 │   └── main.py
 ├── src/                    # Core logic layer
+│   ├── application/        # Use-case orchestration services
+│   ├── domain/             # Domain analysis/reporting logic
+│   ├── infrastructure/     # External adapters (FastF1)
 │   ├── config/             # Settings management
 │   ├── data/               # Data loading and preprocessing
-│   ├── insights/           # Analysis/report engines
 │   ├── logging/            # Logging bootstrap/config
 │   ├── models/             # Pydantic schemas
 │   └── exceptions.py       # Domain exception hierarchy
@@ -121,7 +122,13 @@ venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-### 4) Run the app
+### 4) Install project in editable mode (recommended)
+
+```bash
+pip install -e .
+```
+
+### 5) Run the app
 
 ```bash
 streamlit run app/main.py
