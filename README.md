@@ -10,7 +10,7 @@
 
 AI Race Engineer is a Formula 1 telemetry analysis platform that simulates the workflow of a race/performance engineer. It transforms raw telemetry into corner-level insights, time-loss diagnostics, driver-style profiling, and actionable coaching recommendations.
 
-## ![Driver Comparison](./docs/4.png)
+![Driver Comparison](./docs/4.png)
 
 ## Current Project Status
 
@@ -94,6 +94,30 @@ ai-race-engineer/
 ├── pytest.ini
 └── README.md
 ```
+
+---
+
+## Architecture (Current)
+
+The codebase follows a layered structure:
+
+- `app` → Streamlit UI only (rendering, interaction, UI caching)
+- `src/application` → use-case orchestration between UI and domain
+- `src/domain` → core analysis/reporting logic
+- `src/infrastructure` → external adapters (FastF1 integration)
+- `src/data` → telemetry/session data shaping utilities
+
+Request flow is:
+
+`UI (app)` → `Application services` → `Domain logic` (+ `Infrastructure/Data` as needed)
+
+This separation keeps business logic testable and avoids coupling Streamlit with core computations.
+
+### Import Guidelines
+
+- New analysis/reporting code should be added under `src/domain/*`.
+- UI pages/components should call application services from `src/application/*`.
+- Avoid adding direct Streamlit dependencies in `src/domain`, `src/data`, or `src/infrastructure`.
 
 ---
 
