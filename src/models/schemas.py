@@ -47,6 +47,20 @@ class SeasonResultsPayload(BaseModel):
     S: Optional[pd.DataFrame] = None
     R: Optional[pd.DataFrame] = None
 
+    def get(self, session_key: str, default=None):
+        if hasattr(self, session_key):
+            value = getattr(self, session_key)
+            return value if value is not None else default
+        return default
+
+    def to_session_dict(self) -> dict[str, Optional[pd.DataFrame]]:
+        return {
+            "Q": self.Q,
+            "SQ": self.SQ,
+            "S": self.S,
+            "R": self.R,
+        }
+
 
 class ComparisonComputeResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)

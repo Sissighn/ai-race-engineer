@@ -8,7 +8,7 @@ from src.models import LatestSessionsPayload, SeasonResultsPayload
 logger = get_logger(__name__)
 
 
-def get_latest_sessions(year: Optional[int] = None) -> dict[str, object]:
+def get_latest_sessions(year: Optional[int] = None) -> LatestSessionsPayload:
     """
     Returns complete event data for navigation and next session info.
 
@@ -156,14 +156,13 @@ def get_latest_sessions(year: Optional[int] = None) -> dict[str, object]:
     else:
         logger.info("No future sessions found - season finished")
 
-    payload = LatestSessionsPayload(
+    return LatestSessionsPayload(
         events=events,
         latest_completed_index=latest_completed_index,
         next_session_name=str(next_session_name),
         next_session_time=next_session_time,
         next_event_index=next_event_index,
     )
-    return payload.model_dump()
 
 
 def load_single_session_results(
@@ -244,7 +243,7 @@ def load_single_session_results(
         return None
 
 
-def get_season_results(year: int, event_key: str) -> dict[str, Optional[pd.DataFrame]]:
+def get_season_results(year: int, event_key: str) -> SeasonResultsPayload:
     """
     Returns a dict of DataFrames for one event (GP).
 
@@ -263,11 +262,11 @@ def get_season_results(year: int, event_key: str) -> dict[str, Optional[pd.DataF
 
     if not isinstance(year, int) or year < 1950 or year > 2100:
         logger.error(f"Invalid year: {year}")
-        return {"Q": None, "SQ": None, "S": None, "R": None}
+        return SeasonResultsPayload()
 
     if not event_key or not isinstance(event_key, str):
         logger.error(f"Invalid event_key: {event_key}")
-        return {"Q": None, "SQ": None, "S": None, "R": None}
+        return SeasonResultsPayload()
 
     logger.info(f"Loading all session results for {event_key} ({year})")
 
@@ -281,10 +280,9 @@ def get_season_results(year: int, event_key: str) -> dict[str, Optional[pd.DataF
     loaded_sessions = [k for k, v in results.items() if v is not None]
     logger.info(f"Loaded sessions for {event_key}: {loaded_sessions}")
 
-    payload = SeasonResultsPayload(
+    return SeasonResultsPayload(
         Q=results["Q"],
         SQ=results["SQ"],
         S=results["S"],
         R=results["R"],
     )
-    return payload.model_dump()

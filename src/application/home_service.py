@@ -4,7 +4,7 @@ import pandas as pd
 
 from src.data.latest_session import get_latest_sessions, get_season_results
 from src.infrastructure.fastf1 import get_event_schedule
-from src.models import HomeContextPayload
+from src.models import HomeContextPayload, SeasonResultsPayload
 
 _SESSION_COLS = [
     "Session1DateUtc",
@@ -15,17 +15,17 @@ _SESSION_COLS = [
 ]
 
 
-def load_event_results(year: int, event_key: str) -> dict:
+def load_event_results(year: int, event_key: str) -> SeasonResultsPayload:
     return get_season_results(year, event_key)
 
 
 def get_home_context(year: Optional[int] = None) -> HomeContextPayload:
     session_data = get_latest_sessions(year)
 
-    events_df = session_data["events"]
-    latest_completed_idx = session_data["latest_completed_index"]
-    next_session_name = session_data["next_session_name"]
-    next_session_time = session_data["next_session_time"]
+    events_df = session_data.events
+    latest_completed_idx = session_data.latest_completed_index
+    next_session_name = session_data.next_session_name
+    next_session_time = session_data.next_session_time
 
     display_event = determine_display_event(
         events_df=events_df,

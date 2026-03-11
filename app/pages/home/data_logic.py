@@ -7,13 +7,13 @@ from src.application.home_service import (
     load_event_results as load_event_results_core,
 )
 from src.logging import get_logger
-from src.models import HomeContextPayload
+from src.models import HomeContextPayload, SeasonResultsPayload
 
 logger = get_logger(__name__)
 
 
 @st.cache_resource
-def load_event_results(year: int, event_key: str) -> dict:
+def load_event_results(year: int, event_key: str) -> SeasonResultsPayload:
     try:
         return load_event_results_core(year, event_key)
     except DOMAIN_EXCEPTIONS as e:
@@ -24,7 +24,7 @@ def load_event_results(year: int, event_key: str) -> dict:
             error=str(e),
             exc_info=True,
         )
-        return {}
+        return SeasonResultsPayload()
     except Exception as e:
         logger.error(
             "Failed to load event results",
@@ -33,7 +33,7 @@ def load_event_results(year: int, event_key: str) -> dict:
             error=str(e),
             exc_info=True,
         )
-        return {}
+        return SeasonResultsPayload()
 
 
 @st.cache_data(ttl=600, show_spinner="Loading F1 schedule...")
