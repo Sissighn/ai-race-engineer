@@ -13,13 +13,15 @@ from pathlib import Path
 from typing import Optional
 import structlog
 
+
+_LOGGING_INITIALIZED = False
+
 # ─────────────────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 LOGS_DIR = PROJECT_ROOT / "logs"
-LOGS_DIR.mkdir(exist_ok=True)
 
 # Environment-based log level
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -78,6 +80,8 @@ def setup_logging(level: str = LOG_LEVEL) -> None:
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
+
+    LOGS_DIR.mkdir(exist_ok=True)
 
     # Convert to logging level
     log_level = getattr(logging, level, logging.INFO)
@@ -170,6 +174,7 @@ def get_logger(name: str) -> structlog.BoundLogger:
         >>> logger = get_logger(__name__)
         >>> logger.info("Processing started", session="Monaco", year=2024)
     """
+    _ensure_logging_initialized()
     return structlog.get_logger(name)
 
 
@@ -185,6 +190,7 @@ def bind_context(**context) -> structlog.BoundLogger:
         >>> logger = logger.bind(driver="VER", session="Q")
         >>> logger.info("Processing complete")
     """
+    _ensure_logging_initialized()
     return structlog.get_logger().bind(**context)
 
 
@@ -202,9 +208,15 @@ def initialize_logging(level: Optional[str] = None) -> None:
     Args:
         level: Optional log level override
     """
+    global _LOGGING_INITIALIZED
+    if _LOGGING_INITIALIZED:
+        return
+
     setup_logging(level or LOG_LEVEL)
     configure_structlog()
+    _LOGGING_INITIALIZED = True
 
 
-# Auto-initialize on import
-initialize_logging()
+def _ensure_logging_initialized() -> None:
+    if not _LOGGING_INITIALIZED:
+        initialize_logging()
