@@ -66,7 +66,7 @@ def test_plot_functions_render_when_data_available(monkeypatch):
     plots.plot_speed_profile(tel_a, tel_b, "VER", "HAM")
     plots.plot_brake_throttle(tel_a, tel_b, "VER", "HAM")
     plots.plot_gear_usage(tel_a, "VER")
-    plots.plot_apex_speed_share(df)
+    plots.plot_apex_speed_share(df, "VER", "HAM")
     plots.plot_corner_type_performance(df[["CornerType", "TimeLoss"]])
 
     dna_df = pd.DataFrame(
@@ -80,6 +80,69 @@ def test_plot_functions_render_when_data_available(monkeypatch):
 
     assert len(chart_calls) >= 8
     assert info_calls == []
+
+
+def test_plot_apex_speed_share_uses_signed_bar_chart(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    df = _sample_delta_df().assign(
+        ApexSpeed_A=[135.0, 142.0],
+        ApexSpeed_B=[137.0, 141.0],
+    )
+
+    plots.plot_apex_speed_share(df, "VER", "NOR")
+
+    assert len(captured) == 1
+
+    fig, kwargs = captured[0]
+    assert kwargs["key"] == "apex_share"
+    assert all(trace.type == "bar" for trace in fig.data)
+    assert fig.layout.yaxis.title.text == "Δ Apex Speed (VER - NOR) [km/h]"
+    assert (
+        "Positive: VER faster | Negative: NOR faster | 0: effectively equal"
+        in fig.layout.annotations[0].text
+    )
+
+    x_values = {x for trace in fig.data for x in trace.x}
+    assert {"Corner 1", "Corner 2"}.issubset(x_values)
+
+    trace_names = {trace.name for trace in fig.data}
+    assert "VER faster" in trace_names
+    assert "NOR faster" in trace_names
+
+
+def test_plot_speed_deltas_uses_signed_semantics(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    df = _sample_delta_df()
+
+    plots.plot_speed_deltas(df, "VER", "NOR")
+
+    assert len(captured) == 1
+    fig, kwargs = captured[0]
+
+    assert kwargs["key"] == "speed_deltas"
+    assert len(fig.data) == 2
+    assert fig.data[0].name == "Δ Apex (VER - NOR)"
+    assert fig.data[1].name == "Δ Exit (VER - NOR)"
+    assert fig.layout.yaxis.title.text == "Δ Speed (VER - NOR) [km/h]"
+    assert (
+        "Positive: VER faster | Negative: NOR faster | 0: effectively equal"
+        in fig.layout.annotations[0].text
+    )
+
+    x_values = {x for trace in fig.data for x in trace.x}
+    assert {"Corner 1", "Corner 2"}.issubset(x_values)
 
 
 def test_plot_functions_show_info_on_missing_data(monkeypatch):
