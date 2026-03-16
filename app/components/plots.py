@@ -1,5 +1,6 @@
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
 import streamlit as st
 
 from src.logging import get_logger
@@ -14,6 +15,7 @@ DARK_PAPER = "#191919"
 TEXT_COLOR = "#FFFFFF"
 
 PASTEL_COLORS = ["#A48FFF", "#FFB7D5", "#8FD3FE", "#FFDD94", "#C9F7C5", "#FDCFE8"]
+APEX_SPEED_TIE_THRESHOLD = 0.1
 
 
 def _safe_plotly_chart(fig, key=None, context="plot"):
@@ -34,11 +36,37 @@ def dark_layout(fig, title=None):
         font_color=TEXT_COLOR,
         title_font=dict(size=22, color=TEXT_COLOR),
         hovermode="x unified",
-        margin=dict(l=40, r=40, t=60, b=40),
+        margin=dict(l=40, r=40, t=80, b=40),
     )
     if title:
         fig.update_layout(title=title)
     return fig
+
+
+def _format_corner_label(corner_value):
+    try:
+        return f"Corner {int(corner_value)}"
+    except (TypeError, ValueError):
+        return f"Corner {corner_value}"
+
+
+def _sort_by_corner(df):
+    plot_df = df.copy()
+    plot_df["_corner_sort"] = pd.to_numeric(plot_df["Corner"], errors="coerce")
+    plot_df = plot_df.sort_values(["_corner_sort", "Corner"], kind="stable")
+    return plot_df.drop(columns=["_corner_sort"])
+
+
+def _classify_apex_advantage(delta, driver_a, driver_b):
+    if delta > APEX_SPEED_TIE_THRESHOLD:
+        return f"{driver_a} faster"
+    if delta < -APEX_SPEED_TIE_THRESHOLD:
+        return f"{driver_b} faster"
+    return "Nearly equal"
+
+
+def _format_delta_label(value):
+    return "≈0 km/h" if abs(value) <= APEX_SPEED_TIE_THRESHOLD else f"{value:+.1f} km/h"
 
 
 # -------------------------------------------------------
@@ -71,34 +99,99 @@ def plot_time_loss_bar(df, key="time_loss_bar"):
 # 2) SPEED DELTAS – APEX & EXIT
 # -------------------------------------------------------
 def plot_speed_deltas(df, driver_a, driver_b, key="speed_deltas"):
-    if df is None or df.empty:
+    if (
+        df is None
+        or df.empty
+        or "Corner" not in df.columns
+        or "Delta_ApexSpeed" not in df.columns
+        or "Delta_ExitSpeed" not in df.columns
+    ):
         logger.info("No data for speed deltas", driver_a=driver_a, driver_b=driver_b)
         st.info("No speed delta data available.")
         return
+
+    plot_df = _sort_by_corner(df)
+    plot_df = plot_df.dropna(subset=["Corner", "Delta_ApexSpeed", "Delta_ExitSpeed"])
+
+    if plot_df.empty:
+        logger.info(
+            "Speed deltas skipped after dropping invalid rows",
+            driver_a=driver_a,
+            driver_b=driver_b,
+        )
+        st.info("No speed delta data available.")
+        return
+
+    plot_df["CornerLabel"] = plot_df["Corner"].apply(_format_corner_label)
+    apex_winner = plot_df["Delta_ApexSpeed"].apply(
+        lambda delta: _classify_apex_advantage(delta, driver_a, driver_b)
+    )
+    exit_winner = plot_df["Delta_ExitSpeed"].apply(
+        lambda delta: _classify_apex_advantage(delta, driver_a, driver_b)
+    )
 
     fig = go.Figure()
 
     fig.add_trace(
         go.Bar(
-            x=df["Corner"],
-            y=df["Delta_ApexSpeed"],
-            name="Apex Speed Delta",
+            x=plot_df["CornerLabel"],
+            y=plot_df["Delta_ApexSpeed"],
+            text=plot_df["Delta_ApexSpeed"].map(_format_delta_label),
+            textposition="outside",
+            cliponaxis=False,
+            customdata=apex_winner,
+            name=f"Δ Apex ({driver_a} - {driver_b})",
             marker_color="#A48FFF",
+            hovertemplate=(
+                "<b>%{x}</b><br>"
+                + "Metric: Apex Speed<br>"
+                + "Delta: %{y:+.1f} km/h<br>"
+                + "Faster: %{customdata}<extra></extra>"
+            ),
         )
     )
 
     fig.add_trace(
         go.Bar(
-            x=df["Corner"],
-            y=df["Delta_ExitSpeed"],
-            name="Exit Speed Delta",
+            x=plot_df["CornerLabel"],
+            y=plot_df["Delta_ExitSpeed"],
+            text=plot_df["Delta_ExitSpeed"].map(_format_delta_label),
+            textposition="outside",
+            cliponaxis=False,
+            customdata=exit_winner,
+            name=f"Δ Exit ({driver_a} - {driver_b})",
             marker_color="#8FD3FE",
+            hovertemplate=(
+                "<b>%{x}</b><br>"
+                + "Metric: Exit Speed<br>"
+                + "Delta: %{y:+.1f} km/h<br>"
+                + "Faster: %{customdata}<extra></extra>"
+            ),
         )
     )
 
-    fig = dark_layout(fig, f"Speed Deltas – {driver_a} vs {driver_b}")
+    fig = dark_layout(fig, f"Δ Speed by Corner (Apex & Exit, {driver_a} - {driver_b})")
+    fig.update_layout(barmode="group")
     fig.update_xaxes(title_text="Corner")
-    fig.update_yaxes(title_text="Speed Delta (km/h)")
+    fig.update_yaxes(
+        title_text=f"Δ Speed ({driver_a} - {driver_b}) [km/h]",
+        zeroline=True,
+        zerolinecolor="#888",
+    )
+    fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="#777")
+    fig.add_annotation(
+        text=(
+            f"Positive: {driver_a} faster | Negative: {driver_b} faster | "
+            f"0: effectively equal"
+        ),
+        xref="paper",
+        yref="paper",
+        x=0,
+        y=1.08,
+        showarrow=False,
+        align="left",
+        font=dict(size=12, color="#BBBBBB"),
+    )
 
     _safe_plotly_chart(fig, key=key, context="speed_deltas")
 
@@ -235,28 +328,120 @@ def plot_gear_usage(tel, driver, key=None):
 
 
 # -------------------------------------------------------
-# 6) APEX SPEED DISTRIBUTION – DONUT (FIXED)
+# 6) APEX SPEED DELTA – SIGNED BAR CHART
 # -------------------------------------------------------
-def plot_apex_speed_share(df, key="apex_share"):
-    if df is None or df.empty or "Delta_ApexSpeed" not in df.columns:
-        logger.info("Apex speed share skipped due to missing data")
+def plot_apex_speed_share(
+    df,
+    driver_a="Driver A",
+    driver_b="Driver B",
+    key="apex_share",
+):
+    """
+    Plot signed apex-speed deltas by corner.
+
+    `Delta_ApexSpeed` follows the comparison-layer convention `driver_a - driver_b`.
+    Positive values therefore mean `driver_a` carried more apex speed.
+    """
+    if (
+        df is None
+        or df.empty
+        or "Delta_ApexSpeed" not in df.columns
+        or "Corner" not in df.columns
+    ):
+        logger.info("Apex speed delta chart skipped due to missing data")
+        st.info("No apex speed delta data available.")
         return
 
-    # Fix für Pie-Charts (keine negativen Werte)
-    plot_df = df.copy()
-    plot_df["Absolute_Delta"] = plot_df["Delta_ApexSpeed"].abs()
+    plot_df = _sort_by_corner(df)
+    plot_df = plot_df.dropna(subset=["Corner", "Delta_ApexSpeed"]).copy()
 
-    fig = px.pie(
+    if plot_df.empty:
+        logger.info("Apex speed delta chart skipped after dropping invalid rows")
+        st.info("No apex speed delta data available.")
+        return
+
+    plot_df["CornerLabel"] = plot_df["Corner"].apply(_format_corner_label)
+    plot_df["ApexAdvantage"] = plot_df["Delta_ApexSpeed"].apply(
+        lambda delta: _classify_apex_advantage(delta, driver_a, driver_b)
+    )
+    plot_df["DeltaLabel"] = plot_df["Delta_ApexSpeed"].map(_format_delta_label)
+    plot_df["ApexSpeed_A_Display"] = (
+        plot_df["ApexSpeed_A"].map(lambda value: f"{value:.1f} km/h")
+        if "ApexSpeed_A" in plot_df.columns
+        else "n/a"
+    )
+    plot_df["ApexSpeed_B_Display"] = (
+        plot_df["ApexSpeed_B"].map(lambda value: f"{value:.1f} km/h")
+        if "ApexSpeed_B" in plot_df.columns
+        else "n/a"
+    )
+
+    fig = px.bar(
         plot_df,
-        values="Absolute_Delta",
-        names="Corner",
-        hole=0.55,
-        title="Apex Speed Difference (Magnitude)",
-        hover_data=["Delta_ApexSpeed"],
-        color_discrete_sequence=PASTEL_COLORS,
+        x="CornerLabel",
+        y="Delta_ApexSpeed",
+        color="ApexAdvantage",
+        text="DeltaLabel",
+        custom_data=[
+            "ApexAdvantage",
+            "ApexSpeed_A_Display",
+            "ApexSpeed_B_Display",
+        ],
+        category_orders={
+            "CornerLabel": plot_df["CornerLabel"].tolist(),
+            "ApexAdvantage": [
+                f"{driver_a} faster",
+                f"{driver_b} faster",
+                "Nearly equal",
+            ],
+        },
+        color_discrete_map={
+            f"{driver_a} faster": "#A48FFF",
+            f"{driver_b} faster": "#FFB7D5",
+            "Nearly equal": "#8FD3FE",
+        },
+        labels={
+            "CornerLabel": "Corner",
+            "Delta_ApexSpeed": f"Δ Apex Speed ({driver_a} - {driver_b}) [km/h]",
+            "ApexAdvantage": "Advantage",
+        },
+        height=420,
+        title=f"Δ Apex Speed by Corner ({driver_a} - {driver_b})",
     )
 
     fig = dark_layout(fig)
+    fig.update_traces(
+        textposition="outside",
+        cliponaxis=False,
+        hovertemplate=(
+            "<b>%{x}</b><br>"
+            + "Delta: %{y:+.1f} km/h<br>"
+            + "Faster at apex: %{customdata[0]}<br>"
+            + f"{driver_a}: %{{customdata[1]}}<br>"
+            + f"{driver_b}: %{{customdata[2]}}"
+            + "<extra></extra>"
+        ),
+    )
+    fig.update_xaxes(title_text="Corner")
+    fig.update_yaxes(
+        title_text=f"Δ Apex Speed ({driver_a} - {driver_b}) [km/h]",
+        zeroline=True,
+        zerolinecolor="#888",
+    )
+    fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="#777")
+    fig.add_annotation(
+        text=(
+            f"Positive: {driver_a} faster | Negative: {driver_b} faster | "
+            f"0: effectively equal"
+        ),
+        xref="paper",
+        yref="paper",
+        x=0,
+        y=1.08,
+        showarrow=False,
+        align="left",
+        font=dict(size=12, color="#BBBBBB"),
+    )
     _safe_plotly_chart(fig, key=key, context="apex_speed_share")
 
 
