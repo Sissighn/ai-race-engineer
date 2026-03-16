@@ -167,7 +167,9 @@ def compare_drivers_corner_level(session, driver_a: str, driver_b: str) -> pd.Da
             logger.warning(msg, **log_context)
             return pd.DataFrame()
 
-        # 4. Compute Deltas (A - B)
+        # 4. Compute signed deltas (A - B)
+        # Positive delta -> driver_a is faster / carries more speed
+        # Negative delta -> driver_b is faster / carries more speed
         merged["Delta_ApexSpeed"] = (
             merged[f"{driver_a}_ApexSpeed"] - merged[f"{driver_b}_ApexSpeed"]
         )
