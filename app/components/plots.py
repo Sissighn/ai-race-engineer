@@ -376,6 +376,17 @@ def plot_apex_speed_share(
         else "n/a"
     )
 
+    legend_states = [
+        f"{driver_a} faster",
+        f"{driver_b} faster",
+        "Nearly equal",
+    ]
+    legend_colors = {
+        f"{driver_a} faster": "#A48FFF",
+        f"{driver_b} faster": "#FFB7D5",
+        "Nearly equal": "#8FD3FE",
+    }
+
     fig = px.bar(
         plot_df,
         x="CornerLabel",
@@ -389,17 +400,9 @@ def plot_apex_speed_share(
         ],
         category_orders={
             "CornerLabel": plot_df["CornerLabel"].tolist(),
-            "ApexAdvantage": [
-                f"{driver_a} faster",
-                f"{driver_b} faster",
-                "Nearly equal",
-            ],
+            "ApexAdvantage": legend_states,
         },
-        color_discrete_map={
-            f"{driver_a} faster": "#A48FFF",
-            f"{driver_b} faster": "#FFB7D5",
-            "Nearly equal": "#8FD3FE",
-        },
+        color_discrete_map=legend_colors,
         labels={
             "CornerLabel": "Corner",
             "Delta_ApexSpeed": f"Δ Apex Speed ({driver_a} - {driver_b}) [km/h]",
@@ -442,6 +445,22 @@ def plot_apex_speed_share(
         align="left",
         font=dict(size=12, color="#BBBBBB"),
     )
+
+    present_states = set(plot_df["ApexAdvantage"].unique())
+    for state in legend_states:
+        if state not in present_states:
+            fig.add_trace(
+                go.Bar(
+                    x=[None],
+                    y=[None],
+                    name=state,
+                    marker_color=legend_colors[state],
+                    showlegend=True,
+                    visible="legendonly",
+                    hoverinfo="skip",
+                )
+            )
+
     _safe_plotly_chart(fig, key=key, context="apex_speed_share")
 
 

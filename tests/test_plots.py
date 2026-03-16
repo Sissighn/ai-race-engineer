@@ -116,6 +116,33 @@ def test_plot_apex_speed_share_uses_signed_bar_chart(monkeypatch):
     assert "NOR faster" in trace_names
 
 
+def test_plot_apex_speed_share_legend_is_always_complete(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    # Only negative deltas -> data contains only "NOR faster"
+    df = pd.DataFrame(
+        {
+            "Corner": [1, 2, 3],
+            "Delta_ApexSpeed": [-1.5, -2.0, -0.5],
+        }
+    )
+
+    plots.plot_apex_speed_share(df, "VER", "NOR")
+
+    assert len(captured) == 1
+    fig, _kwargs = captured[0]
+    trace_names = {trace.name for trace in fig.data}
+
+    assert "VER faster" in trace_names
+    assert "NOR faster" in trace_names
+    assert "Nearly equal" in trace_names
+
+
 def test_plot_speed_deltas_uses_signed_semantics(monkeypatch):
     captured = []
 
