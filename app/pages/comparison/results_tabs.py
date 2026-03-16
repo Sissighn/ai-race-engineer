@@ -171,11 +171,16 @@ def _render_overview_tab(
     else:
         st.warning("Could not classify corners (Missing Speed Data).")
 
-    st.markdown("<h3>Speed Delta (Apex & Exit)</h3>", unsafe_allow_html=True)
+    st.markdown("<h3>Signed Speed Delta (Apex & Exit)</h3>", unsafe_allow_html=True)
     plot_speed_deltas(tl, driver_a, driver_b, key="speed_deltas_overview")
 
-    st.markdown("<h3>Apex Speed Share</h3>", unsafe_allow_html=True)
-    plot_apex_speed_share(tl, key="apex_share_overview")
+    st.markdown("<h3>Apex Speed Delta by Corner</h3>", unsafe_allow_html=True)
+    plot_apex_speed_share(
+        tl,
+        driver_a=driver_a,
+        driver_b=driver_b,
+        key="apex_share_overview",
+    )
 
 
 def _render_inputs_tab(
