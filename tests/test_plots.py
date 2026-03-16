@@ -143,6 +143,35 @@ def test_plot_apex_speed_share_legend_is_always_complete(monkeypatch):
     assert "Nearly equal" in trace_names
 
 
+def test_plot_apex_speed_share_shows_nearly_equal_markers(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    df = pd.DataFrame(
+        {
+            "Corner": [1, 2, 3],
+            "Delta_ApexSpeed": [0.0, 0.05, -2.0],
+        }
+    )
+
+    plots.plot_apex_speed_share(df, "VER", "NOR")
+
+    assert len(captured) == 1
+    fig, _kwargs = captured[0]
+
+    scatter_traces = [trace for trace in fig.data if trace.type == "scatter"]
+    assert len(scatter_traces) == 1
+    marker_trace = scatter_traces[0]
+
+    assert marker_trace.name == "Nearly equal marker"
+    assert all(y == 0 for y in marker_trace.y)
+    assert set(marker_trace.x) == {"Corner 1", "Corner 2"}
+
+
 def test_plot_speed_deltas_uses_signed_semantics(monkeypatch):
     captured = []
 

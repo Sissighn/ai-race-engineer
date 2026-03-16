@@ -446,6 +446,31 @@ def plot_apex_speed_share(
         font=dict(size=12, color="#BBBBBB"),
     )
 
+    nearly_equal_df = plot_df[plot_df["ApexAdvantage"] == "Nearly equal"]
+    if not nearly_equal_df.empty:
+        # Keep near-zero values visible with explicit neutral markers at y=0.
+        fig.add_trace(
+            go.Scatter(
+                x=nearly_equal_df["CornerLabel"],
+                y=[0.0] * len(nearly_equal_df),
+                mode="markers",
+                name="Nearly equal marker",
+                marker=dict(
+                    symbol="circle-open",
+                    size=12,
+                    color=legend_colors["Nearly equal"],
+                    line=dict(color=legend_colors["Nearly equal"], width=2),
+                ),
+                text=nearly_equal_df["DeltaLabel"],
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    + "Delta: %{text}<br>"
+                    + "Status: Nearly equal<extra></extra>"
+                ),
+                showlegend=False,
+            )
+        )
+
     present_states = set(plot_df["ApexAdvantage"].unique())
     for state in legend_states:
         if state not in present_states:
