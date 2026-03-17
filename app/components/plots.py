@@ -456,13 +456,6 @@ def _plot_single_speed_delta(
         lambda delta: _classify_apex_advantage(delta, driver_a, driver_b)
     )
     plot_df["DeltaLabel"] = plot_df[delta_col].map(_format_delta_label)
-    plot_df["Interpretation"] = plot_df[delta_col].apply(
-        lambda value: (
-            "Effectively equal"
-            if abs(value) <= APEX_SPEED_TIE_THRESHOLD
-            else "Meaningful difference"
-        )
-    )
 
     legend_states = [
         f"{driver_a} faster",
@@ -474,7 +467,21 @@ def _plot_single_speed_delta(
         f"{driver_b} faster": "#FFB7D5",
         "Nearly equal": "#FFDD94",
     }
-    title_sub = f"Δ {metric_name} ({driver_a} - {driver_b})"
+    a_col = legend_colors[f"{driver_a} faster"]
+    b_col = legend_colors[f"{driver_b} faster"]
+    ne_col = legend_colors["Nearly equal"]
+    legend_line = (
+        f"<span style='color:{a_col}'>▲</span> {driver_a} faster"
+        f" &nbsp;&nbsp;·&nbsp;&nbsp; "
+        f"<span style='color:{b_col}'>▼</span> {driver_b} faster"
+        f" &nbsp;&nbsp;·&nbsp;&nbsp; "
+        f"<span style='color:{ne_col}'>●</span> Nearly equal"
+    )
+    chart_title = (
+        f"{metric_name} Delta by Corner"
+        f"<br><sup>Δ {metric_name} ({driver_a} - {driver_b})</sup>"
+        f"<br><sup>{legend_line}</sup>"
+    )
 
     fig = px.bar(
         plot_df,
@@ -482,7 +489,7 @@ def _plot_single_speed_delta(
         y=delta_col,
         color="Advantage",
         text="DeltaLabel",
-        custom_data=["Advantage", "Interpretation"],
+        custom_data=["Advantage"],
         category_orders={
             "CornerLabel": plot_df["CornerLabel"].tolist(),
             "Advantage": legend_states,
@@ -493,20 +500,19 @@ def _plot_single_speed_delta(
             delta_col: f"Δ {metric_name} ({driver_a} - {driver_b}) [km/h]",
             "Advantage": "Advantage",
         },
-        height=420,
-        title=f"{metric_name} Delta by Corner<br><sup>{title_sub}</sup>",
+        height=460,
+        title=chart_title,
     )
 
     fig = dark_layout(fig)
-    fig.update_layout(margin=dict(t=100, b=85))
+    fig.update_layout(margin=dict(t=155, b=50))
     fig.update_traces(
         textposition="outside",
         cliponaxis=False,
         hovertemplate=(
             "<b>%{x}</b><br>"
             + "Delta: %{y:+.1f} km/h<br>"
-            + "Faster: %{customdata[0]}<br>"
-            + "Interpretation: %{customdata[1]}"
+            + "Faster: %{customdata[0]}"
             + "<extra></extra>"
         ),
     )
@@ -517,25 +523,6 @@ def _plot_single_speed_delta(
         zerolinecolor="#888",
     )
     fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="#777")
-    a_col = legend_colors[f"{driver_a} faster"]
-    b_col = legend_colors[f"{driver_b} faster"]
-    ne_col = legend_colors["Nearly equal"]
-    fig.add_annotation(
-        text=(
-            f"<span style='color:{a_col}'>▲</span> {driver_a} faster"
-            f" &nbsp;&nbsp;·&nbsp;&nbsp; "
-            f"<span style='color:{b_col}'>▼</span> {driver_b} faster"
-            f" &nbsp;&nbsp;·&nbsp;&nbsp; "
-            f"<span style='color:{ne_col}'>●</span> Nearly equal"
-        ),
-        xref="paper",
-        yref="paper",
-        x=0.5,
-        y=-0.20,
-        showarrow=False,
-        align="center",
-        font=dict(size=12, color="#BBBBBB"),
-    )
 
     nearly_equal_df = plot_df[plot_df["Advantage"] == "Nearly equal"]
     if not nearly_equal_df.empty:

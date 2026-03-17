@@ -104,10 +104,10 @@ def test_plot_apex_speed_share_uses_signed_bar_chart(monkeypatch):
     assert kwargs["key"] == "apex_share"
     assert all(trace.type == "bar" for trace in fig.data)
     assert fig.layout.yaxis.title.text == "Δ Apex Speed (VER - NOR) [km/h]"
-    ann_text = fig.layout.annotations[0].text
-    assert "VER faster" in ann_text
-    assert "NOR faster" in ann_text
-    assert "Nearly equal" in ann_text
+    title_text = fig.layout.title.text
+    assert "VER faster" in title_text
+    assert "NOR faster" in title_text
+    assert "Nearly equal" in title_text
 
     x_values = {x for trace in fig.data for x in trace.x}
     assert {"Corner 1", "Corner 2"}.issubset(x_values)
@@ -190,10 +190,10 @@ def test_plot_exit_speed_delta_uses_signed_bar_chart(monkeypatch):
 
     assert kwargs["key"] == "exit_speed_delta"
     assert fig.layout.yaxis.title.text == "Δ Exit Speed (VER - NOR) [km/h]"
-    ann_text = fig.layout.annotations[0].text
-    assert "VER faster" in ann_text
-    assert "NOR faster" in ann_text
-    assert "Nearly equal" in ann_text
+    title_text = fig.layout.title.text
+    assert "VER faster" in title_text
+    assert "NOR faster" in title_text
+    assert "Nearly equal" in title_text
 
 
 def test_plot_speed_deltas_uses_signed_semantics(monkeypatch):
