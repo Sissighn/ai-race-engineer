@@ -386,6 +386,7 @@ def plot_apex_speed_share(
         f"{driver_b} faster": "#FFB7D5",
         "Nearly equal": "#8FD3FE",
     }
+    title_sub = f"Δ Apex Speed ({driver_a} - {driver_b})"
 
     fig = px.bar(
         plot_df,
@@ -409,7 +410,7 @@ def plot_apex_speed_share(
             "ApexAdvantage": "Advantage",
         },
         height=420,
-        title=f"Δ Apex Speed by Corner ({driver_a} - {driver_b})",
+        title=f"<sup>{title_sub}</sup>",
     )
 
     fig = dark_layout(fig)

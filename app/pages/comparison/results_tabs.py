@@ -174,7 +174,7 @@ def _render_overview_tab(
     st.markdown("<h3>Signed Speed Delta (Apex & Exit)</h3>", unsafe_allow_html=True)
     plot_speed_deltas(tl, driver_a, driver_b, key="speed_deltas_overview")
 
-    st.markdown("<h3>Apex Speed Delta by Corner</h3>", unsafe_allow_html=True)
+    st.markdown("<h3>Apex Speed Comparison by Corner</h3>", unsafe_allow_html=True)
     plot_apex_speed_share(
         tl,
         driver_a=driver_a,
