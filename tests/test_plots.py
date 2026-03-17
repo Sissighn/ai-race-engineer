@@ -67,6 +67,7 @@ def test_plot_functions_render_when_data_available(monkeypatch):
     plots.plot_brake_throttle(tel_a, tel_b, "VER", "HAM")
     plots.plot_gear_usage(tel_a, "VER")
     plots.plot_apex_speed_share(df, "VER", "HAM")
+    plots.plot_exit_speed_delta(df, "VER", "HAM")
     plots.plot_corner_type_performance(df[["CornerType", "TimeLoss"]])
 
     dna_df = pd.DataFrame(
@@ -103,10 +104,10 @@ def test_plot_apex_speed_share_uses_signed_bar_chart(monkeypatch):
     assert kwargs["key"] == "apex_share"
     assert all(trace.type == "bar" for trace in fig.data)
     assert fig.layout.yaxis.title.text == "Δ Apex Speed (VER - NOR) [km/h]"
-    assert (
-        "Positive: VER faster | Negative: NOR faster | 0: effectively equal"
-        in fig.layout.annotations[0].text
-    )
+    ann_text = fig.layout.annotations[0].text
+    assert "VER faster" in ann_text
+    assert "NOR faster" in ann_text
+    assert "Nearly equal" in ann_text
 
     x_values = {x for trace in fig.data for x in trace.x}
     assert {"Corner 1", "Corner 2"}.issubset(x_values)
@@ -172,6 +173,29 @@ def test_plot_apex_speed_share_shows_nearly_equal_markers(monkeypatch):
     assert set(marker_trace.x) == {"Corner 1", "Corner 2"}
 
 
+def test_plot_exit_speed_delta_uses_signed_bar_chart(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    df = _sample_delta_df()
+
+    plots.plot_exit_speed_delta(df, "VER", "NOR")
+
+    assert len(captured) == 1
+    fig, kwargs = captured[0]
+
+    assert kwargs["key"] == "exit_speed_delta"
+    assert fig.layout.yaxis.title.text == "Δ Exit Speed (VER - NOR) [km/h]"
+    ann_text = fig.layout.annotations[0].text
+    assert "VER faster" in ann_text
+    assert "NOR faster" in ann_text
+    assert "Nearly equal" in ann_text
+
+
 def test_plot_speed_deltas_uses_signed_semantics(monkeypatch):
     captured = []
 
@@ -189,16 +213,46 @@ def test_plot_speed_deltas_uses_signed_semantics(monkeypatch):
 
     assert kwargs["key"] == "speed_deltas"
     assert len(fig.data) == 2
-    assert fig.data[0].name == "Δ Apex (VER - NOR)"
-    assert fig.data[1].name == "Δ Exit (VER - NOR)"
-    assert fig.layout.yaxis.title.text == "Δ Speed (VER - NOR) [km/h]"
+    assert fig.data[0].name == "Apex Speed Delta"
+    assert fig.data[1].name == "Exit Speed Delta"
     assert (
-        "Positive: VER faster | Negative: NOR faster | 0: effectively equal"
-        in fig.layout.annotations[0].text
+        fig.layout.title.text
+        == "Speed Delta Comparison by Corner<br><sup>Signed Δ Speed (VER - NOR)</sup>"
+    )
+    assert fig.layout.yaxis.title.text == "Δ Apex Speed (VER - NOR) [km/h]"
+    assert fig.layout.yaxis2.title.text == "Δ Exit Speed (VER - NOR) [km/h]"
+    assert any(
+        "Positive: VER faster | Negative: NOR faster | 0: effectively equal" in ann.text
+        for ann in fig.layout.annotations
     )
 
     x_values = {x for trace in fig.data for x in trace.x}
     assert {"Corner 1", "Corner 2"}.issubset(x_values)
+
+
+def test_plot_speed_deltas_shows_nearly_equal_markers(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    df = pd.DataFrame(
+        {
+            "Corner": [1, 2, 3],
+            "Delta_ApexSpeed": [0.0, -2.0, 0.05],
+            "Delta_ExitSpeed": [0.02, 1.2, 0.0],
+        }
+    )
+
+    plots.plot_speed_deltas(df, "VER", "NOR")
+
+    assert len(captured) == 1
+    fig, _kwargs = captured[0]
+
+    scatter_traces = [trace for trace in fig.data if trace.type == "scatter"]
+    assert len(scatter_traces) == 2
 
 
 def test_plot_functions_show_info_on_missing_data(monkeypatch):

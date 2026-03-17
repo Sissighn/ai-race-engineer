@@ -15,8 +15,8 @@ from app.components.plots import (
     plot_brake_throttle,
     plot_corner_type_performance,
     plot_driver_dna,
+    plot_exit_speed_delta,
     plot_gear_usage,
-    plot_speed_deltas,
     plot_speed_profile,
     plot_time_loss_bar,
 )
@@ -171,15 +171,18 @@ def _render_overview_tab(
     else:
         st.warning("Could not classify corners (Missing Speed Data).")
 
-    st.markdown("<h3>Signed Speed Delta (Apex & Exit)</h3>", unsafe_allow_html=True)
-    plot_speed_deltas(tl, driver_a, driver_b, key="speed_deltas_overview")
-
-    st.markdown("<h3>Apex Speed Comparison by Corner</h3>", unsafe_allow_html=True)
     plot_apex_speed_share(
         tl,
         driver_a=driver_a,
         driver_b=driver_b,
         key="apex_share_overview",
+    )
+
+    plot_exit_speed_delta(
+        tl,
+        driver_a=driver_a,
+        driver_b=driver_b,
+        key="exit_speed_delta_overview",
     )
 
 
