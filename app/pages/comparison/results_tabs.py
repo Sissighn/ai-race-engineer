@@ -132,8 +132,12 @@ def _render_overview_tab(
                     "Analysis based on telemetry patterns (Aggressiveness, Smoothness, Input Workload)."
                 )
             with col_loss:
-                st.markdown("<b>Time Loss Distribution</b>", unsafe_allow_html=True)
-                plot_time_loss_bar(tl, key="time_loss_bar_overview")
+                plot_time_loss_bar(
+                    tl,
+                    driver_a=driver_a,
+                    driver_b=driver_b,
+                    key="time_loss_bar_overview",
+                )
 
     except Exception as e:
         logger.error(

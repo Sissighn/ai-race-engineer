@@ -61,7 +61,7 @@ def test_plot_functions_render_when_data_available(monkeypatch):
     tel_a = _sample_tel()
     tel_b = _sample_tel()
 
-    plots.plot_time_loss_bar(df)
+    plots.plot_time_loss_bar(df, "VER", "HAM")
     plots.plot_speed_deltas(df, "VER", "HAM")
     plots.plot_speed_profile(tel_a, tel_b, "VER", "HAM")
     plots.plot_brake_throttle(tel_a, tel_b, "VER", "HAM")
@@ -81,6 +81,46 @@ def test_plot_functions_render_when_data_available(monkeypatch):
 
     assert len(chart_calls) >= 8
     assert info_calls == []
+
+
+def test_plot_time_loss_bar_uses_signed_bar_chart(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    df = pd.DataFrame(
+        {
+            "Corner": [1, 2, 3],
+            "TimeLoss": [0.120, -0.080, 0.005],  # A gains, B gains, nearly equal
+        }
+    )
+
+    plots.plot_time_loss_bar(df, "HAM", "VER")
+
+    assert len(captured) == 1
+    fig, kwargs = captured[0]
+
+    assert kwargs["key"] == "time_loss_bar"
+    assert fig.layout.yaxis.title.text == "Δ Time (HAM − VER) [s]"
+
+    title_text = fig.layout.title.text
+    assert "HAM gains" in title_text
+    assert "VER gains" in title_text
+    assert "Nearly equal" in title_text
+
+    trace_names = {trace.name for trace in fig.data}
+    assert "HAM gains" in trace_names
+    assert "VER gains" in trace_names
+    assert "Nearly equal" in trace_names
+
+    # Circle-open marker must appear for the nearly-equal corner
+    scatter_traces = [t for t in fig.data if t.type == "scatter"]
+    assert len(scatter_traces) == 1
+    assert scatter_traces[0].name == "Nearly equal marker"
+    assert list(scatter_traces[0].x) == ["Corner 3"]
 
 
 def test_plot_apex_speed_share_uses_signed_bar_chart(monkeypatch):

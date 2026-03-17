@@ -17,6 +17,7 @@ TEXT_COLOR = "#FFFFFF"
 
 PASTEL_COLORS = ["#A48FFF", "#FFB7D5", "#8FD3FE", "#FFDD94", "#C9F7C5", "#FDCFE8"]
 APEX_SPEED_TIE_THRESHOLD = 0.1
+TIME_LOSS_TIE_THRESHOLD = 0.010  # 10 ms – below this a corner time delta is negligible
 
 
 def _safe_plotly_chart(fig, key=None, context="plot"):
@@ -70,6 +71,11 @@ def _format_delta_label(value):
     return "≈0 km/h" if abs(value) <= APEX_SPEED_TIE_THRESHOLD else f"{value:+.1f} km/h"
 
 
+def _format_time_label(value: float) -> str:
+    """Format a lap-time delta value for bar labels (millisecond precision)."""
+    return "≈0s" if abs(value) <= TIME_LOSS_TIE_THRESHOLD else f"{value:+.3f}s"
+
+
 def _near_equal_mask(series: pd.Series) -> pd.Series:
     return series.abs() <= APEX_SPEED_TIE_THRESHOLD
 
@@ -77,25 +83,148 @@ def _near_equal_mask(series: pd.Series) -> pd.Series:
 # -------------------------------------------------------
 # 1) TIME LOSS BAR CHART
 # -------------------------------------------------------
-def plot_time_loss_bar(df, key="time_loss_bar"):
-    if df is None or df.empty:
+def plot_time_loss_bar(
+    df,
+    driver_a: str = "Driver A",
+    driver_b: str = "Driver B",
+    key: str = "time_loss_bar",
+):
+    """
+    Signed diverging bar chart: Lap Time Delta per Corner (driver_a − driver_b).
+
+    Sign convention (mirrors speed-delta charts):
+      TimeLoss > 0  →  driver_a gains time  (driver_b is slower)
+      TimeLoss < 0  →  driver_b gains time  (driver_a is slower)
+      |TimeLoss| ≤ TIME_LOSS_TIE_THRESHOLD  →  Nearly equal
+    """
+    if (
+        df is None
+        or df.empty
+        or "TimeLoss" not in df.columns
+        or "Corner" not in df.columns
+    ):
         logger.info("No data for time loss chart")
         st.info("No time loss data available.")
         return
 
-    fig = px.bar(
-        df,
-        x="Corner",
-        y="TimeLoss",
-        color="TimeLoss",
-        color_continuous_scale=px.colors.sequential.Purples,
-        height=380,
+    plot_df = _sort_by_corner(df).dropna(subset=["Corner", "TimeLoss"]).copy()
+    if plot_df.empty:
+        st.info("No time loss data available.")
+        return
+
+    plot_df["CornerLabel"] = plot_df["Corner"].apply(_format_corner_label)
+    plot_df["DeltaLabel"] = plot_df["TimeLoss"].map(_format_time_label)
+    plot_df["Advantage"] = plot_df["TimeLoss"].apply(
+        lambda v: (
+            f"{driver_a} gains"
+            if v > TIME_LOSS_TIE_THRESHOLD
+            else (
+                f"{driver_b} gains" if v < -TIME_LOSS_TIE_THRESHOLD else "Nearly equal"
+            )
+        )
     )
 
-    fig = dark_layout(fig, "Time Loss per Corner")
-    fig.update_traces(marker_line_width=0)
+    legend_states = [f"{driver_a} gains", f"{driver_b} gains", "Nearly equal"]
+    legend_colors = {
+        f"{driver_a} gains": "#A48FFF",
+        f"{driver_b} gains": "#FFB7D5",
+        "Nearly equal": "#FFDD94",
+    }
+    a_col = legend_colors[f"{driver_a} gains"]
+    b_col = legend_colors[f"{driver_b} gains"]
+    ne_col = legend_colors["Nearly equal"]
+    legend_line = (
+        f"<span style='color:{a_col}'>▲</span> {driver_a} gains time"
+        f" &nbsp;&nbsp;·&nbsp;&nbsp; "
+        f"<span style='color:{b_col}'>▼</span> {driver_b} gains time"
+        f" &nbsp;&nbsp;·&nbsp;&nbsp; "
+        f"<span style='color:{ne_col}'>●</span> Nearly equal"
+    )
+    chart_title = (
+        f"Lap Time Delta per Corner"
+        f"<br><sup>Δ Time ({driver_a} − {driver_b}) [s]</sup>"
+        f"<br><sup>{legend_line}</sup>"
+    )
+
+    fig = px.bar(
+        plot_df,
+        x="CornerLabel",
+        y="TimeLoss",
+        color="Advantage",
+        text="DeltaLabel",
+        custom_data=["Advantage"],
+        category_orders={
+            "CornerLabel": plot_df["CornerLabel"].tolist(),
+            "Advantage": legend_states,
+        },
+        color_discrete_map=legend_colors,
+        labels={
+            "CornerLabel": "Corner",
+            "TimeLoss": f"Δ Time ({driver_a} − {driver_b}) [s]",
+            "Advantage": "Advantage",
+        },
+        height=420,
+        title=chart_title,
+    )
+
+    fig = dark_layout(fig)
+    fig.update_layout(margin=dict(t=155, b=50))
+    fig.update_traces(
+        textposition="outside",
+        cliponaxis=False,
+        hovertemplate=(
+            "<b>%{x}</b><br>"
+            + "Δ Time: %{y:+.3f}s<br>"
+            + "Outcome: %{customdata[0]}<br>"
+            + "<extra></extra>"
+        ),
+    )
     fig.update_xaxes(title_text="Corner")
-    fig.update_yaxes(title_text="Time Loss (s)")
+    fig.update_yaxes(
+        title_text=f"Δ Time ({driver_a} − {driver_b}) [s]",
+        zeroline=True,
+        zerolinecolor="#888",
+    )
+    fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="#777")
+
+    ne_df = plot_df[plot_df["Advantage"] == "Nearly equal"]
+    if not ne_df.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=ne_df["CornerLabel"],
+                y=[0.0] * len(ne_df),
+                mode="markers",
+                name="Nearly equal marker",
+                marker=dict(
+                    symbol="circle-open",
+                    size=12,
+                    color=ne_col,
+                    line=dict(color=ne_col, width=2),
+                ),
+                text=ne_df["DeltaLabel"],
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    + "Δ Time: %{text}<br>"
+                    + "Status: Nearly equal<extra></extra>"
+                ),
+                showlegend=False,
+            )
+        )
+
+    present_states = set(plot_df["Advantage"].unique())
+    for state in legend_states:
+        if state not in present_states:
+            fig.add_trace(
+                go.Bar(
+                    x=[None],
+                    y=[None],
+                    name=state,
+                    marker_color=legend_colors[state],
+                    showlegend=True,
+                    visible="legendonly",
+                    hoverinfo="skip",
+                )
+            )
 
     _safe_plotly_chart(fig, key=key, context="time_loss_bar")
 
