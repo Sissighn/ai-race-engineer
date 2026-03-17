@@ -129,7 +129,7 @@ def _render_overview_tab(
             with col_dna:
                 plot_driver_dna(dna_df, driver_a, driver_b, key="radar_chart_overview")
                 st.caption(
-                    "Analysis based on telemetry patterns (Aggressiveness, Smoothness, Input Workload)."
+                    "Telemetry-derived normalized heuristic scores (0-100): useful for style comparison, not absolute skill or lap-time ranking."
                 )
             with col_loss:
                 plot_time_loss_bar(

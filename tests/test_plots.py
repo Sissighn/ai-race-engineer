@@ -123,6 +123,42 @@ def test_plot_time_loss_bar_uses_signed_bar_chart(monkeypatch):
     assert list(scatter_traces[0].x) == ["Corner 3"]
 
 
+def test_plot_driver_dna_uses_grouped_horizontal_bar_with_transparency(monkeypatch):
+    captured = []
+
+    monkeypatch.setattr(
+        "app.components.plots.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    dna_df = pd.DataFrame(
+        {
+            "Metric": ["Aggressiveness", "Cornering", "Smoothness"],
+            "HAM": [82.3, 76.1, 69.5],
+            "VER": [85.1, 79.0, 64.2],
+        }
+    )
+
+    plots.plot_driver_dna(dna_df, "HAM", "VER")
+
+    assert len(captured) == 1
+    fig, kwargs = captured[0]
+
+    assert kwargs["key"] == "driver_dna_radar"
+    assert all(trace.type == "bar" for trace in fig.data)
+    assert fig.layout.xaxis.title.text == "Derived Driver Style Score [0-100]"
+    assert fig.layout.xaxis.range == (0, 100)
+
+    title_text = fig.layout.title.text
+    assert "Driver Style Profile Comparison" in title_text
+    assert "Telemetry-derived normalized heuristic scores" in title_text
+    assert "HAM vs VER" in title_text
+
+    hover = fig.data[0].hovertemplate
+    assert "Meaning:" in hover
+    assert "Note:" in hover
+
+
 def test_plot_apex_speed_share_uses_signed_bar_chart(monkeypatch):
     captured = []
 

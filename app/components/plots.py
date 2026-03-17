@@ -19,6 +19,37 @@ PASTEL_COLORS = ["#A48FFF", "#FFB7D5", "#8FD3FE", "#FFDD94", "#C9F7C5", "#FDCFE8
 APEX_SPEED_TIE_THRESHOLD = 0.1
 TIME_LOSS_TIE_THRESHOLD = 0.010  # 10 ms – below this a corner time delta is negligible
 
+DNA_METRIC_META = {
+    "Aggressiveness": {
+        "label": "Braking Aggressiveness",
+        "description": "Derived from high deceleration events in braking zones.",
+    },
+    "Cornering": {
+        "label": "Corner Speed Profile",
+        "description": "Derived from average speed in cornering phases.",
+    },
+    "Smoothness": {
+        "label": "Throttle Smoothness",
+        "description": "Derived from throttle input stability during transitions.",
+    },
+    "FullThrottle": {
+        "label": "Full-Throttle Usage",
+        "description": "Derived from the share of telemetry samples at near-full throttle.",
+    },
+    "GearWorkload": {
+        "label": "Gear Shift Activity",
+        "description": "Derived from total gear-change activity over the lap.",
+    },
+}
+
+DNA_METRIC_ORDER = [
+    "Aggressiveness",
+    "Cornering",
+    "Smoothness",
+    "FullThrottle",
+    "GearWorkload",
+]
+
 
 def _safe_plotly_chart(fig, key=None, context="plot"):
     try:
@@ -732,11 +763,14 @@ def plot_exit_speed_delta(
 
 
 # -------------------------------------------------------
-# 7) DRIVER DNA RADAR CHART (MIT KEY FIX)
+# 7) DRIVER DNA COMPARISON
 # -------------------------------------------------------
 def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
     """
-    Plots a Radar Chart comparing two drivers' characteristics.
+    Plots telemetry-derived driver style scores in a grouped horizontal bar chart.
+
+    Note: Scores are normalized heuristics on a 0-100 scale and should be read as
+    relative style indicators, not absolute performance ratings.
     """
     if dna_df is None or dna_df.empty:
         logger.warning(
@@ -745,61 +779,99 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
         st.info("Driver DNA chart unavailable.")
         return
 
-    fig = go.Figure()
+    required_cols = {"Metric", driver_a, driver_b}
+    if not required_cols.issubset(set(dna_df.columns)):
+        logger.warning(
+            "Driver DNA chart missing required columns",
+            required=list(required_cols),
+            available=list(dna_df.columns),
+            driver_a=driver_a,
+            driver_b=driver_b,
+        )
+        st.info("Driver DNA chart unavailable.")
+        return
 
-    # Trace für Driver A
-    fig.add_trace(
-        go.Scatterpolar(
-            r=dna_df[driver_a],
-            theta=dna_df["Metric"],
-            fill="toself",
-            name=driver_a,
-            line=dict(color="#A48FFF", width=2),
-            fillcolor="rgba(164, 143, 255, 0.3)",
+    plot_df = dna_df.copy()
+    plot_df["MetricLabel"] = plot_df["Metric"].apply(
+        lambda m: DNA_METRIC_META.get(m, {}).get("label", m)
+    )
+    plot_df["MetricDescription"] = plot_df["Metric"].apply(
+        lambda m: DNA_METRIC_META.get(
+            m,
+            {},
+        ).get(
+            "description",
+            "Telemetry-derived normalized style score.",
         )
     )
 
-    # Trace für Driver B
-    fig.add_trace(
-        go.Scatterpolar(
-            r=dna_df[driver_b],
-            theta=dna_df["Metric"],
-            fill="toself",
-            name=driver_b,
-            line=dict(color="#FFB7D5", width=2),
-            fillcolor="rgba(255, 183, 213, 0.3)",
-        )
+    ordered_metrics = [m for m in DNA_METRIC_ORDER if m in plot_df["Metric"].values]
+    ordered_metrics += [
+        m for m in plot_df["Metric"].values if m not in set(ordered_metrics)
+    ]
+    ordered_labels = [
+        DNA_METRIC_META.get(metric, {}).get("label", metric) for metric in ordered_metrics
+    ]
+
+    long_df = plot_df.melt(
+        id_vars=["Metric", "MetricLabel", "MetricDescription"],
+        value_vars=[driver_a, driver_b],
+        var_name="Driver",
+        value_name="Score",
+    )
+    long_df["MethodNote"] = (
+        "Normalized telemetry-derived heuristic score (0-100), not an absolute rating."
     )
 
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, 100],
-                gridcolor="#333",
-                linecolor="#333",
-                tickfont=dict(color="#888"),
-            ),
-            angularaxis=dict(
-                gridcolor="#333", linecolor="#333", tickfont=dict(color="#FFF", size=12)
-            ),
-            bgcolor="#141414",
+    fig = px.bar(
+        long_df,
+        x="Score",
+        y="MetricLabel",
+        color="Driver",
+        orientation="h",
+        barmode="group",
+        text="Score",
+        custom_data=["Metric", "MetricDescription", "MethodNote"],
+        category_orders={"MetricLabel": ordered_labels, "Driver": [driver_a, driver_b]},
+        color_discrete_map={driver_a: "#A48FFF", driver_b: "#FFB7D5"},
+        labels={"Score": "Derived Driver Style Score [0-100]", "MetricLabel": "Metric"},
+        title=(
+            "Driver Style Profile Comparison"
+            f"<br><sup>{driver_a} vs {driver_b} • Telemetry-derived normalized heuristic scores (0-100)</sup>"
+            "<br><sup>Higher score = stronger expression of that style characteristic, not universally "
+            "faster performance</sup>"
         ),
-        title=dict(
-            text="<b>Driver DNA Comparison</b>",
-            y=0.95,
+        height=480,
+    )
+
+    fig = dark_layout(fig)
+    fig.update_layout(
+        margin=dict(l=60, r=40, t=155, b=50),
+        legend=dict(
+            orientation="h",
             x=0.5,
             xanchor="center",
-            yanchor="top",
-            font=dict(size=20, color="#FFF"),
+            y=1.02,
+            yanchor="bottom",
+            title_text="",
         ),
-        paper_bgcolor="#191919",
-        font=dict(color="#FFF"),
-        margin=dict(l=40, r=40, t=80, b=40),
-        legend=dict(x=0.8, y=0.95),
+    )
+    fig.update_xaxes(range=[0, 100], dtick=20)
+    fig.update_yaxes(categoryorder="array", categoryarray=ordered_labels)
+    fig.update_traces(
+        texttemplate="%{x:.1f}",
+        textposition="outside",
+        cliponaxis=False,
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>"
+            + "Driver: %{fullData.name}<br>"
+            + "Score: %{x:.1f}/100<br>"
+            + "Meaning: %{customdata[1]}<br>"
+            + "Note: %{customdata[2]}"
+            + "<extra></extra>"
+        ),
     )
 
-    # Hier übergeben wir den Key an Streamlit!
     _safe_plotly_chart(fig, key=key, context="driver_dna")
 
 
