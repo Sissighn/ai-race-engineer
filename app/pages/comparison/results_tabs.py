@@ -128,9 +128,6 @@ def _render_overview_tab(
             col_dna, col_loss = st.columns([1, 1])
             with col_dna:
                 plot_driver_dna(dna_df, driver_a, driver_b, key="radar_chart_overview")
-                st.caption(
-                    "Telemetry-derived normalized heuristic scores (0-100): useful for style comparison, not absolute skill or lap-time ranking."
-                )
             with col_loss:
                 plot_time_loss_bar(
                     tl,

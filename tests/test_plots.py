@@ -156,7 +156,7 @@ def test_plot_driver_dna_uses_grouped_horizontal_bar_with_transparency(monkeypat
 
     hover = fig.data[0].hovertemplate
     assert "Meaning:" in hover
-    assert "Note:" in hover
+    assert "Note:" not in hover
 
 
 def test_plot_apex_speed_share_uses_signed_bar_chart(monkeypatch):

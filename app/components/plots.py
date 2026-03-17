@@ -14,6 +14,7 @@ logger = get_logger(__name__)
 DARK_BG = "#141414"
 DARK_PAPER = "#191919"
 TEXT_COLOR = "#FFFFFF"
+TITLE_LINE_SPACER = "<br><span style='font-size:8px;line-height:8px'>&nbsp;</span>"
 
 PASTEL_COLORS = ["#A48FFF", "#FFB7D5", "#8FD3FE", "#FFDD94", "#C9F7C5", "#FDCFE8"]
 APEX_SPEED_TIE_THRESHOLD = 0.1
@@ -173,8 +174,8 @@ def plot_time_loss_bar(
     )
     chart_title = (
         f"Lap Time Delta per Corner"
-        f"<br><sup>Δ Time ({driver_a} − {driver_b}) [s]</sup>"
-        f"<br><sup>{legend_line}</sup>"
+        f"{TITLE_LINE_SPACER}<sup>Δ Time ({driver_a} − {driver_b}) [s]</sup>"
+        f"{TITLE_LINE_SPACER}<sup>{legend_line}</sup>"
     )
 
     fig = px.bar(
@@ -199,7 +200,7 @@ def plot_time_loss_bar(
     )
 
     fig = dark_layout(fig)
-    fig.update_layout(margin=dict(t=155, b=50))
+    fig.update_layout(margin=dict(t=170, b=50))
     fig.update_traces(
         textposition="outside",
         cliponaxis=False,
@@ -639,8 +640,8 @@ def _plot_single_speed_delta(
     )
     chart_title = (
         f"{metric_name} Delta by Corner"
-        f"<br><sup>Δ {metric_name} ({driver_a} - {driver_b})</sup>"
-        f"<br><sup>{legend_line}</sup>"
+        f"{TITLE_LINE_SPACER}<sup>Δ {metric_name} ({driver_a} - {driver_b})</sup>"
+        f"{TITLE_LINE_SPACER}<sup>{legend_line}</sup>"
     )
 
     fig = px.bar(
@@ -665,7 +666,7 @@ def _plot_single_speed_delta(
     )
 
     fig = dark_layout(fig)
-    fig.update_layout(margin=dict(t=155, b=50))
+    fig.update_layout(margin=dict(t=170, b=50))
     fig.update_traces(
         textposition="outside",
         cliponaxis=False,
@@ -810,7 +811,8 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
         m for m in plot_df["Metric"].values if m not in set(ordered_metrics)
     ]
     ordered_labels = [
-        DNA_METRIC_META.get(metric, {}).get("label", metric) for metric in ordered_metrics
+        DNA_METRIC_META.get(metric, {}).get("label", metric)
+        for metric in ordered_metrics
     ]
 
     long_df = plot_df.melt(
@@ -818,9 +820,6 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
         value_vars=[driver_a, driver_b],
         var_name="Driver",
         value_name="Score",
-    )
-    long_df["MethodNote"] = (
-        "Normalized telemetry-derived heuristic score (0-100), not an absolute rating."
     )
 
     fig = px.bar(
@@ -831,22 +830,23 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
         orientation="h",
         barmode="group",
         text="Score",
-        custom_data=["Metric", "MetricDescription", "MethodNote"],
+        custom_data=["Metric", "MetricDescription"],
         category_orders={"MetricLabel": ordered_labels, "Driver": [driver_a, driver_b]},
         color_discrete_map={driver_a: "#A48FFF", driver_b: "#FFB7D5"},
         labels={"Score": "Derived Driver Style Score [0-100]", "MetricLabel": "Metric"},
         title=(
             "Driver Style Profile Comparison"
-            f"<br><sup>{driver_a} vs {driver_b} • Telemetry-derived normalized heuristic scores (0-100)</sup>"
-            "<br><sup>Higher score = stronger expression of that style characteristic, not universally "
-            "faster performance</sup>"
+            f"{TITLE_LINE_SPACER}<sup><span style='color:#AEB4BE;font-weight:400'>{driver_a} vs {driver_b}  -  "
+            "Telemetry-derived normalized heuristic scores (0-100)</span></sup>"
+            f"{TITLE_LINE_SPACER}<sup><span style='color:#AEB4BE;font-weight:400'>Higher score = stronger expression "
+            "of that style characteristic, not universally faster performance</span></sup>"
         ),
         height=480,
     )
 
     fig = dark_layout(fig)
     fig.update_layout(
-        margin=dict(l=60, r=40, t=155, b=50),
+        margin=dict(l=60, r=40, t=170, b=50),
         legend=dict(
             orientation="h",
             x=0.5,
@@ -866,8 +866,7 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
             "<b>%{customdata[0]}</b><br>"
             + "Driver: %{fullData.name}<br>"
             + "Score: %{x:.1f}/100<br>"
-            + "Meaning: %{customdata[1]}<br>"
-            + "Note: %{customdata[2]}"
+            + "Meaning: %{customdata[1]}"
             + "<extra></extra>"
         ),
     )
