@@ -1,11 +1,13 @@
 # app/components/track_map.py
 
 import os
+from typing import Any
+
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
-from matplotlib.colors import LinearSegmentedColormap
+import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
+from matplotlib.colors import LinearSegmentedColormap
 
 from src.data.load_data import load_telemetry_with_position
 from src.logging import get_logger
@@ -18,61 +20,356 @@ logger = get_logger(__name__)
 DARK_BG = "#141414"
 DARK_PAPER = "#191919"
 TEXT_COLOR = "#FFFFFF"
+SUBTLE_TEXT = "#B8BEC8"
+OUTLINE_COLOR = "#3A404B"
+START_FINISH_COLOR = "#FFFFFF"
 
 
-# ---------------------------------------------------------
-# Pastel Neon Speed Colormap (matching your plotly theme)
-# ---------------------------------------------------------
 def _dark_pastel_speed_cmap():
     colors = [
-        (0.75, 0.82, 1.00),  # neon-light blue
-        (0.80, 0.70, 1.00),  # neon lavender
-        (0.95, 0.75, 0.95),  # soft pink
-        (1.00, 0.88, 0.60),  # pastel peach
+        (0.45, 0.76, 1.00),
+        (0.64, 0.56, 0.98),
+        (0.93, 0.66, 0.83),
+        (1.00, 0.86, 0.52),
     ]
     return LinearSegmentedColormap.from_list("dark_pastel_speed", colors)
 
 
-# ---------------------------------------------------------
-# 1. Dark mode line heatmap
-# ---------------------------------------------------------
-def _line_heatmap_dark(x, y, values, ax, fig):
-    x = np.asarray(x)
-    y = np.asarray(y)
-    values = np.asarray(values)
+def _dark_throttle_cmap():
+    colors = [
+        (0.20, 0.35, 0.28),
+        (0.39, 0.74, 0.55),
+        (0.71, 0.94, 0.72),
+        (0.98, 0.98, 0.72),
+    ]
+    return LinearSegmentedColormap.from_list("dark_throttle", colors)
 
-    if len(x) < 2:
+
+def _dark_brake_cmap():
+    colors = [
+        (0.23, 0.28, 0.38),
+        (0.55, 0.70, 0.95),
+        (0.99, 0.77, 0.55),
+        (1.00, 0.56, 0.56),
+    ]
+    return LinearSegmentedColormap.from_list("dark_brake", colors)
+
+
+def _matplotlib_cmap_to_plotly(cmap, steps: int = 12) -> list[list[Any]]:
+    return [
+        [i / (steps - 1), f"rgb({int(r*255)}, {int(g*255)}, {int(b*255)})"]
+        for i, (r, g, b, _a) in enumerate(cmap(np.linspace(0, 1, steps)))
+    ]
+
+
+TRACK_MAP_METRICS = {
+    "speed": {
+        "column": "Speed",
+        "label": "Speed",
+        "unit": "km/h",
+        "title": "Track Speed Maps",
+        "description": "Fastest-lap track position colored by speed.",
+        "valid_range": (0.0, 380.0),
+        "cmap": _dark_pastel_speed_cmap(),
+    },
+    "throttle": {
+        "column": "Throttle",
+        "label": "Throttle",
+        "unit": "%",
+        "title": "Track Throttle Maps",
+        "description": "Fastest-lap track position colored by throttle application.",
+        "valid_range": (0.0, 100.0),
+        "cmap": _dark_throttle_cmap(),
+    },
+    "brake": {
+        "column": "Brake",
+        "label": "Brake",
+        "unit": "%",
+        "title": "Track Brake Maps",
+        "description": "Fastest-lap track position colored by brake application.",
+        "valid_range": (0.0, 100.0),
+        "cmap": _dark_brake_cmap(),
+    },
+}
+
+
+def _resolve_metric(mode: str) -> tuple[str, dict, bool]:
+    metric_key = str(mode or "speed").strip().lower()
+    if metric_key not in TRACK_MAP_METRICS:
+        return "speed", TRACK_MAP_METRICS["speed"], True
+    return metric_key, TRACK_MAP_METRICS[metric_key], False
+
+
+def _sanitize_metric_values(values, metric_key: str) -> np.ndarray:
+    values = np.asarray(values, dtype=float)
+    values[~np.isfinite(values)] = np.nan
+
+    lo, hi = TRACK_MAP_METRICS[metric_key]["valid_range"]
+    values = np.clip(values, lo, hi)
+
+    if np.all(np.isnan(values)):
+        raise ValueError("Track-map metric contains no valid values.")
+
+    cleaned = pd.Series(values).interpolate(limit_direction="both").to_numpy()
+    if np.all(np.isnan(cleaned)):
+        raise ValueError("Track-map metric interpolation failed.")
+
+    return cleaned
+
+
+def _prepare_track_map_data(tel: pd.DataFrame, metric_key: str) -> dict:
+    metric_cfg = TRACK_MAP_METRICS[metric_key]
+    required_cols = ["X", "Y", metric_cfg["column"]]
+
+    for col in required_cols:
+        if col not in tel.columns:
+            raise KeyError(col)
+
+    work = tel[required_cols].copy()
+    work = work.replace([np.inf, -np.inf], np.nan).dropna(subset=["X", "Y"])
+    if len(work) < 2:
         raise ValueError("Telemetry too short for track map.")
 
-    points = np.column_stack((x, y))
-    segments = np.stack([points[:-1], points[1:]], axis=1)
+    x = work["X"].astype(float).to_numpy()
+    y = work["Y"].astype(float).to_numpy()
+    values = _sanitize_metric_values(work[metric_cfg["column"]], metric_key)
+    if "Distance" in tel.columns:
+        distance = (
+            tel.loc[work.index, "Distance"]
+            .astype(float)
+            .interpolate(limit_direction="both")
+            .to_numpy()
+        )
+    else:
+        distance = np.arange(len(work), dtype=float)
 
-    norm = plt.Normalize(vmin=np.nanmin(values), vmax=np.nanmax(values))
-    cmap = _dark_pastel_speed_cmap()
+    segment_index = np.arange(len(work), dtype=int)
 
-    lc = LineCollection(segments, cmap=cmap, norm=norm, linewidth=3.2)
-    lc.set_array(values)
-
-    ax.add_collection(lc)
-    ax.set_aspect("equal", "box")
-    ax.autoscale()
-    ax.axis("off")
-
-    # Colorbar
-    cbar = fig.colorbar(lc, ax=ax, fraction=0.045, pad=0.02)
-    cbar.set_label("Speed (km/h)", fontsize=8, color=TEXT_COLOR)
-
-    # Colorbar dark styling
-    cbar.outline.set_edgecolor(TEXT_COLOR)
-    cbar.ax.yaxis.set_tick_params(color=TEXT_COLOR)
-    plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color=TEXT_COLOR)
-
-    return lc
+    return {
+        "x": x,
+        "y": y,
+        "values": values,
+        "distance": distance,
+        "segment_index": segment_index,
+        "metric_cfg": metric_cfg,
+    }
 
 
-# ---------------------------------------------------------
-# 2. Optional SVG Outline
-# ---------------------------------------------------------
+def _compute_shared_scale(
+    value_arrays: list[np.ndarray], metric_key: str
+) -> tuple[float, float]:
+    metric_cfg = TRACK_MAP_METRICS[metric_key]
+    lo_bound, hi_bound = metric_cfg["valid_range"]
+
+    combined = np.concatenate(
+        [
+            arr[np.isfinite(arr)]
+            for arr in value_arrays
+            if arr is not None and len(arr) > 0
+        ]
+    )
+    if combined.size == 0:
+        return lo_bound, hi_bound
+
+    vmin = float(np.nanpercentile(combined, 1))
+    vmax = float(np.nanpercentile(combined, 99))
+    vmin = max(lo_bound, min(vmin, hi_bound))
+    vmax = max(lo_bound, min(vmax, hi_bound))
+
+    if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
+        vmin = float(np.nanmin(combined))
+        vmax = float(np.nanmax(combined))
+
+    if vmax <= vmin:
+        pad = max(1.0, 0.05 * max(abs(vmin), 1.0))
+        vmin -= pad
+        vmax += pad
+
+    return max(lo_bound, vmin), min(hi_bound, vmax)
+
+
+def _build_track_panel_traces(
+    prepared: dict, coloraxis: str = "coloraxis"
+) -> list[go.Scatter]:
+    x = prepared["x"]
+    y = prepared["y"]
+    values = prepared["values"]
+    distance = prepared["distance"]
+    segment_index = prepared["segment_index"]
+    metric_cfg = prepared["metric_cfg"]
+
+    hover_custom = np.column_stack((distance, segment_index))
+
+    return [
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="lines",
+            line=dict(color=OUTLINE_COLOR, width=10),
+            hoverinfo="skip",
+            showlegend=False,
+        ),
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="markers",
+            marker=dict(
+                size=7,
+                color=values,
+                coloraxis=coloraxis,
+                opacity=0.98,
+            ),
+            customdata=hover_custom,
+            hovertemplate=(
+                f"<b>{metric_cfg['label']}</b><br>"
+                + f"Value: %{{marker.color:.1f}} {metric_cfg['unit']}<br>"
+                + "Distance: %{customdata[0]:.0f} m<br>"
+                + "Segment: %{customdata[1]:.0f}"
+                + "<extra></extra>"
+            ),
+            showlegend=False,
+        ),
+        go.Scatter(
+            x=[x[0]],
+            y=[y[0]],
+            mode="markers+text",
+            marker=dict(
+                size=10, color=START_FINISH_COLOR, line=dict(color="#111111", width=1)
+            ),
+            text=["S/F"],
+            textposition="middle right",
+            textfont=dict(size=10, color=TEXT_COLOR),
+            hovertemplate="<b>Start / Finish</b><extra></extra>",
+            showlegend=False,
+        ),
+    ]
+
+
+def _create_track_map_figure(
+    track: str,
+    driver_code: str,
+    prepared: dict,
+    metric_key: str,
+    *,
+    vmin: float,
+    vmax: float,
+    show_colorbar: bool,
+) -> go.Figure:
+    metric_cfg = TRACK_MAP_METRICS[metric_key]
+    fig = go.Figure()
+
+    for trace in _build_track_panel_traces(prepared):
+        fig.add_trace(trace)
+
+    fig.update_layout(
+        paper_bgcolor=DARK_PAPER,
+        plot_bgcolor=DARK_PAPER,
+        font=dict(color=TEXT_COLOR),
+        margin=dict(l=10, r=40 if not show_colorbar else 76, t=52, b=10),
+        hovermode="closest",
+        hoverlabel=dict(bgcolor="#22252B", font=dict(color=TEXT_COLOR, size=12)),
+        title=dict(
+            text=f"{track} — {driver_code}",
+            x=0.5,
+            xanchor="center",
+            y=0.97,
+            yanchor="top",
+            font=dict(size=12, color=TEXT_COLOR),
+        ),
+        coloraxis=dict(
+            colorscale=_matplotlib_cmap_to_plotly(metric_cfg["cmap"]),
+            cmin=vmin,
+            cmax=vmax,
+            colorbar=(
+                dict(
+                    title=dict(
+                        text=f"{metric_cfg['label']} [{metric_cfg['unit']}]",
+                        font=dict(color=TEXT_COLOR, size=11),
+                    ),
+                    tickfont=dict(color=TEXT_COLOR, size=10),
+                    thickness=16,
+                    len=0.82,
+                    x=1.02,
+                    y=0.5,
+                    outlinecolor=TEXT_COLOR,
+                    bgcolor=DARK_PAPER,
+                )
+                if show_colorbar
+                else dict(
+                    thickness=0,
+                    len=0,
+                    outlinewidth=0,
+                    tickfont=dict(color=TEXT_COLOR, size=1),
+                )
+            ),
+        ),
+        showlegend=False,
+    )
+    fig.update_xaxes(visible=False, showgrid=False, zeroline=False)
+    fig.update_yaxes(
+        visible=False,
+        showgrid=False,
+        zeroline=False,
+        scaleanchor="x",
+        scaleratio=1,
+    )
+
+    return fig
+
+
+def _render_track_map_figure(
+    track: str, panels: list[tuple[str, dict]], metric_key: str
+) -> None:
+    value_arrays = [prepared["values"] for _driver, prepared in panels]
+    vmin, vmax = _compute_shared_scale(value_arrays, metric_key)
+
+    if len(panels) == 1:
+        driver_code, prepared = panels[0]
+        fig = _create_track_map_figure(
+            track,
+            driver_code,
+            prepared,
+            metric_key,
+            vmin=vmin,
+            vmax=vmax,
+            show_colorbar=True,
+        )
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            key=f"track-map-{metric_key}-{track}-{driver_code}",
+            config={
+                "displayModeBar": False,
+                "responsive": True,
+                "scrollZoom": False,
+            },
+        )
+        return
+
+    columns = st.columns(len(panels), gap="medium")
+    for idx, ((driver_code, prepared), column) in enumerate(zip(panels, columns)):
+        fig = _create_track_map_figure(
+            track,
+            driver_code,
+            prepared,
+            metric_key,
+            vmin=vmin,
+            vmax=vmax,
+            show_colorbar=idx == len(panels) - 1,
+        )
+        with column:
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                key=f"track-map-{metric_key}-{track}-{driver_code}-{idx}",
+                config={
+                    "displayModeBar": False,
+                    "responsive": True,
+                    "scrollZoom": False,
+                },
+            )
+
+
 def show_track_outline_svg(track: str):
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     svg_path = os.path.join(
@@ -86,11 +383,12 @@ def show_track_outline_svg(track: str):
         st.info(f"No SVG outline found for {track}")
 
 
-# ---------------------------------------------------------
-# 3. MAIN FUNCTION — Track Map (Dark Mode)
-# ---------------------------------------------------------
 def plot_track_map(session, driver_code: str, track: str, mode="speed"):
-    logger.debug("Plotting track map", driver_code=driver_code, track=track, mode=mode)
+    logger.debug(
+        "Plotting single track map", driver_code=driver_code, track=track, mode=mode
+    )
+
+    metric_key, _metric_cfg, used_fallback = _resolve_metric(mode)
     tel = load_telemetry_with_position(session, driver_code)
 
     if tel is None or tel.empty:
@@ -100,45 +398,88 @@ def plot_track_map(session, driver_code: str, track: str, mode="speed"):
         st.warning(f"No telemetry with position data for {driver_code}.")
         return
 
-    for col in ["X", "Y", "Speed"]:
-        if col not in tel.columns:
-            logger.error(
-                "Telemetry missing required track-map column",
-                missing_column=col,
-                driver_code=driver_code,
-                track=track,
-            )
-            st.error(f"Telemetry missing '{col}' for track map.")
-            return
-
-    x = tel["X"].values
-    y = tel["Y"].values
-
-    if mode.lower() == "speed":
-        values = tel["Speed"].values
-    else:
-        values = tel["Speed"].values
+    if used_fallback:
         logger.warning("Unsupported track map mode, falling back to speed", mode=mode)
         st.warning(f"Mode '{mode}' not implemented. Using Speed instead.")
 
-    # --------------- FIGURE ------------------
-    fig, ax = plt.subplots(figsize=(2.5, 2.5), dpi=260)
-
-    # DARK BACKGROUND for the whole map
-    fig.patch.set_facecolor(DARK_PAPER)
-    ax.set_facecolor(DARK_PAPER)
-
     try:
-        _line_heatmap_dark(x, y, values, ax, fig)
+        prepared = _prepare_track_map_data(tel, metric_key)
+        _render_track_map_figure(track, [(driver_code, prepared)], metric_key)
+    except KeyError as missing_col:
+        logger.error(
+            "Telemetry missing required track-map column",
+            missing_column=str(missing_col),
+            driver_code=driver_code,
+            track=track,
+        )
+        st.error(f"Telemetry missing '{missing_col.args[0]}' for track map.")
     except Exception as e:
         logger.error("Track map draw error", error=str(e), exc_info=True)
         st.error(f"Track map draw error: {e}")
-        plt.close(fig)
+
+
+def plot_track_map_comparison(
+    session,
+    driver_a: str,
+    driver_b: str,
+    track: str,
+    metric: str = "speed",
+):
+    logger.debug(
+        "Plotting track map comparison",
+        driver_a=driver_a,
+        driver_b=driver_b,
+        track=track,
+        metric=metric,
+    )
+
+    metric_key, metric_cfg, used_fallback = _resolve_metric(metric)
+    if used_fallback:
+        logger.warning(
+            "Unsupported track map metric, falling back to speed", metric=metric
+        )
+        st.warning(f"Metric '{metric}' not implemented. Using Speed instead.")
+
+    driver_panels = []
+    missing_drivers = []
+
+    for driver_code in [driver_a, driver_b]:
+        tel = load_telemetry_with_position(session, driver_code)
+        if tel is None or tel.empty:
+            missing_drivers.append(driver_code)
+            continue
+
+        try:
+            prepared = _prepare_track_map_data(tel, metric_key)
+            driver_panels.append((driver_code, prepared))
+        except KeyError as missing_col:
+            logger.error(
+                "Telemetry missing required comparison track-map column",
+                missing_column=str(missing_col),
+                driver_code=driver_code,
+                track=track,
+                metric=metric_cfg["label"],
+            )
+            st.error(
+                f"Telemetry missing '{missing_col.args[0]}' for {driver_code} track map."
+            )
+            return
+        except Exception as e:
+            logger.error(
+                "Track map comparison draw error",
+                driver_code=driver_code,
+                error=str(e),
+                exc_info=True,
+            )
+            st.error(f"Track map draw error for {driver_code}: {e}")
+            return
+
+    if missing_drivers:
+        st.warning(
+            f"No telemetry with position data for: {', '.join(missing_drivers)}."
+        )
+
+    if not driver_panels:
         return
 
-    # Dark title
-    ax.set_title(f"{track} – {driver_code}", fontsize=10, pad=6, color=TEXT_COLOR)
-
-    st.pyplot(fig)
-    logger.debug("Track map rendered", driver_code=driver_code, track=track)
-    plt.close(fig)
+    _render_track_map_figure(track, driver_panels, metric_key)
