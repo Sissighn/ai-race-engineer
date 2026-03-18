@@ -21,7 +21,7 @@ from app.components.plots import (
     plot_time_loss_bar,
 )
 from app.components.report_view import render_race_engineer_report
-from app.components.track_map import plot_track_map
+from app.components.track_map import plot_track_map_comparison
 from app.utils.error_ui import DOMAIN_EXCEPTIONS, show_domain_error
 from src.data.compare import sync_telemetry
 from src.domain.analysis.driver_dna import get_driver_dna_comparison_df
@@ -191,12 +191,11 @@ def _render_inputs_tab(
     tel_a, tel_b, driver_a: str, driver_b: str, session, track: str
 ) -> None:
     st.markdown("<h2 class='section-title'>Driver Inputs</h2>", unsafe_allow_html=True)
-
-    ctm1, ctm2 = st.columns(2)
-    with ctm1:
-        plot_track_map(session, driver_a, track)
-    with ctm2:
-        plot_track_map(session, driver_b, track)
+    st.markdown("<h3>Track Speed Maps</h3>", unsafe_allow_html=True)
+    st.caption(
+        "Fastest-lap track position colored by speed [km/h]. Both drivers use the same color scale for direct comparison."
+    )
+    plot_track_map_comparison(session, driver_a, driver_b, track, metric="speed")
 
     plot_speed_profile(tel_a, tel_b, driver_a, driver_b, key="speed_prof_inputs")
 
