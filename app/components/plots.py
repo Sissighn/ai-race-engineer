@@ -1,3 +1,24 @@
+"""
+Plotting components for the AI Race Engineer dashboard.
+
+All chart functions follow the same contract:
+  - Accept a DataFrame (or telemetry Series) plus driver name strings.
+  - Return nothing; they render directly into the active Streamlit page via
+    _safe_plotly_chart(), which handles exceptions gracefully.
+  - Apply the shared dark theme through dark_layout().
+
+Section index
+─────────────
+  1  Time Loss Bar Chart
+  2  Speed Deltas – Apex & Exit (combined subplot)
+  3  Speed Profile – line plot
+  4  Brake & Throttle Inputs
+  5  Gear Usage – donut chart
+  6  Standalone Speed Delta Charts (apex / exit wrappers)
+  7  Driver DNA Comparison – horizontal grouped bars
+  8  Corner Type Performance
+"""
+
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
@@ -53,6 +74,13 @@ DNA_METRIC_ORDER = [
 
 
 def _safe_plotly_chart(fig, key=None, context="plot"):
+    """Render a Plotly figure inside Streamlit, catching and logging any errors.
+
+    Args:
+        fig:     The Plotly figure object to render.
+        key:     Optional Streamlit widget key (prevents re-render collisions).
+        context: Human-readable label used in error logs to identify the chart.
+    """
     try:
         st.plotly_chart(fig, width="stretch", key=key)
     except Exception as e:
@@ -63,6 +91,18 @@ def _safe_plotly_chart(fig, key=None, context="plot"):
 
 
 def dark_layout(fig, title=None):
+    """Apply the shared dark-theme layout to a Plotly figure.
+
+    Sets background colours, font colour, hover mode, and default margins.
+    Optionally updates the chart title if provided.
+
+    Args:
+        fig:   Plotly figure to modify in-place.
+        title: Optional title string (supports HTML/Plotly markup).
+
+    Returns:
+        The same figure with the dark theme applied.
+    """
     fig.update_layout(
         template="plotly_dark",
         plot_bgcolor=DARK_BG,
@@ -78,6 +118,11 @@ def dark_layout(fig, title=None):
 
 
 def _format_corner_label(corner_value):
+    """Convert a raw corner identifier to a human-readable label.
+
+    Converts numeric values to integers to avoid labels like "Corner 3.0".
+    Falls back to a string representation when conversion is not possible.
+    """
     try:
         return f"Corner {int(corner_value)}"
     except (TypeError, ValueError):
@@ -85,6 +130,13 @@ def _format_corner_label(corner_value):
 
 
 def _sort_by_corner(df):
+    """Return a copy of *df* sorted by corner number in ascending order.
+
+    Coerces the Corner column to numeric for correct ordering (so Corner 10
+    comes after Corner 9, not after Corner 1). Non-numeric corners are sorted
+    after numeric ones via the stable secondary sort on the raw Corner column.
+    The temporary sort key column is dropped before returning.
+    """
     plot_df = df.copy()
     plot_df["_corner_sort"] = pd.to_numeric(plot_df["Corner"], errors="coerce")
     plot_df = plot_df.sort_values(["_corner_sort", "Corner"], kind="stable")
@@ -92,6 +144,11 @@ def _sort_by_corner(df):
 
 
 def _classify_apex_advantage(delta, driver_a, driver_b):
+    """Map a signed speed delta (driver_a − driver_b) to a categorical advantage label.
+
+    Values within ±APEX_SPEED_TIE_THRESHOLD are treated as a tie to avoid
+    surfacing noise in the telemetry as meaningful differences.
+    """
     if delta > APEX_SPEED_TIE_THRESHOLD:
         return f"{driver_a} faster"
     if delta < -APEX_SPEED_TIE_THRESHOLD:
@@ -100,6 +157,11 @@ def _classify_apex_advantage(delta, driver_a, driver_b):
 
 
 def _format_delta_label(value):
+    """Format a speed delta value for display on bar chart labels.
+
+    Returns '≈0 km/h' for values within the tie threshold to make
+    negligible differences visually obvious at a glance.
+    """
     return "≈0 km/h" if abs(value) <= APEX_SPEED_TIE_THRESHOLD else f"{value:+.1f} km/h"
 
 
@@ -109,6 +171,11 @@ def _format_time_label(value: float) -> str:
 
 
 def _near_equal_mask(series: pd.Series) -> pd.Series:
+    """Return a boolean mask that is True where values are within the tie threshold.
+
+    Used to identify 'Nearly equal' corners so they can receive a special
+    open-circle marker on delta charts instead of a bar.
+    """
     return series.abs() <= APEX_SPEED_TIE_THRESHOLD
 
 
@@ -265,6 +332,18 @@ def plot_time_loss_bar(
 # 2) SPEED DELTAS – APEX & EXIT
 # -------------------------------------------------------
 def plot_speed_deltas(df, driver_a, driver_b, key="speed_deltas"):
+    """Render a two-panel subplot showing apex and exit speed deltas per corner.
+
+    Both panels share the same x-axis (corner labels) and display signed deltas
+    (driver_a − driver_b). Corners within the tie threshold are highlighted with
+    open-circle scatter markers instead of bars.
+
+    Args:
+        df:       DataFrame with columns: Corner, Delta_ApexSpeed, Delta_ExitSpeed.
+        driver_a: Name of the reference driver (positive delta = this driver faster).
+        driver_b: Name of the comparison driver.
+        key:      Streamlit widget key.
+    """
     if (
         df is None
         or df.empty
@@ -447,6 +526,15 @@ def plot_speed_deltas(df, driver_a, driver_b, key="speed_deltas"):
 # 3) SPEED PROFILE – LINE PLOT
 # -------------------------------------------------------
 def plot_speed_profile(telA, telB, driverA, driverB, key="speed_profile"):
+    """Overlay both drivers' speed traces on a single Distance vs Speed line chart.
+
+    Args:
+        telA:    Telemetry DataFrame for driver A (must contain Distance, Speed).
+        telB:    Telemetry DataFrame for driver B (must contain Distance, Speed).
+        driverA: Display name for driver A.
+        driverB: Display name for driver B.
+        key:     Streamlit widget key.
+    """
     if telA is None or telB is None or telA.empty or telB.empty:
         logger.warning(
             "Missing telemetry for speed profile", driver_a=driverA, driver_b=driverB
@@ -487,6 +575,18 @@ def plot_speed_profile(telA, telB, driverA, driverB, key="speed_profile"):
 # 4) BRAKE & THROTTLE INPUTS
 # -------------------------------------------------------
 def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
+    """Overlay brake and throttle traces for both drivers against lap distance.
+
+    Four traces are drawn in total: brake and throttle for each driver, each
+    with a distinct colour so inputs can be compared at every point on track.
+
+    Args:
+        telA:    Telemetry DataFrame for driver A (must contain Distance, Brake, Throttle).
+        telB:    Telemetry DataFrame for driver B (must contain Distance, Brake, Throttle).
+        driverA: Display name for driver A.
+        driverB: Display name for driver B.
+        key:     Streamlit widget key.
+    """
     if telA is None or telB is None or telA.empty or telB.empty:
         logger.warning(
             "Missing telemetry for brake/throttle plot",
@@ -551,7 +651,14 @@ def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
 # 5) GEAR USAGE – DONUT
 # -------------------------------------------------------
 def plot_gear_usage(tel, driver, key=None):
-    # Falls key nicht übergeben wurde, generieren wir einen aus dem Fahrernamen
+    """Render a donut chart showing the distribution of gear usage across a lap.
+
+    Args:
+        tel:    Telemetry DataFrame containing the nGear column.
+        driver: Driver display name (used in the chart title and default key).
+        key:    Streamlit widget key. Derived from the driver name if omitted.
+    """
+    # Fall back to a driver-derived key if none is provided by the caller
     if key is None:
         key = f"gear_usage_{driver}"
 
@@ -587,6 +694,23 @@ def _plot_single_speed_delta(
     context,
     color,
 ):
+    """Internal helper that renders a single signed speed-delta bar chart.
+
+    Shared by plot_apex_speed_share() and plot_exit_speed_delta() to avoid
+    code duplication. Colours bars by advantage category, overlays open-circle
+    markers for near-equal corners, and ensures all legend states are present
+    even when a category has no data (shown as legend-only entries).
+
+    Args:
+        df:          DataFrame with columns Corner and *delta_col*.
+        delta_col:   Column name holding the signed speed delta values.
+        metric_name: Human-readable metric name used in axis/title labels.
+        driver_a:    Name of the reference driver (positive = this driver faster).
+        driver_b:    Name of the comparison driver.
+        key:         Streamlit widget key.
+        context:     Label passed to _safe_plotly_chart for error logging.
+        color:       Hex colour for the driver_a advantage bars.
+    """
     if (
         df is None
         or df.empty
@@ -733,6 +857,10 @@ def plot_apex_speed_share(
     driver_b="Driver B",
     key="apex_share",
 ):
+    """Bar chart of apex speed delta (driver_a − driver_b) per corner.
+
+    Wrapper around _plot_single_speed_delta for the Delta_ApexSpeed column.
+    """
     _plot_single_speed_delta(
         df=df,
         delta_col="Delta_ApexSpeed",
@@ -751,6 +879,10 @@ def plot_exit_speed_delta(
     driver_b="Driver B",
     key="exit_speed_delta",
 ):
+    """Bar chart of exit speed delta (driver_a − driver_b) per corner.
+
+    Wrapper around _plot_single_speed_delta for the Delta_ExitSpeed column.
+    """
     _plot_single_speed_delta(
         df=df,
         delta_col="Delta_ExitSpeed",
@@ -879,16 +1011,17 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
 # -------------------------------------------------------
 def plot_corner_type_performance(agg_df, key="corner_type_perf"):
     """
-    Zeigt den kumulierten Zeitverlust pro Kurventyp an.
+    Bar chart showing cumulative time delta grouped by corner speed category
+    (Low / Medium / High Speed).
     """
     if agg_df is None or agg_df.empty:
         st.info("No classification data available.")
         return
 
     color_map = {
-        "Low Speed": "#FFDD94",  # Gelb
-        "Medium Speed": "#8FD3FE",  # Blau
-        "High Speed": "#FFB7D5",  # Rot/Rosa
+        "Low Speed": "#FFDD94",  # yellow
+        "Medium Speed": "#8FD3FE",  # blue
+        "High Speed": "#FFB7D5",  # pink/red
     }
 
     fig = px.bar(
@@ -904,10 +1037,9 @@ def plot_corner_type_performance(agg_df, key="corner_type_perf"):
     fig.update_traces(
         texttemplate="%{text:.3f}s",
         textposition="outside",
-        width=0.5,  # Balken nicht zu fett machen
+        width=0.5,  # keep bars from looking too heavy
     )
 
-    # Layout Anpassungen
     fig.update_layout(
         template="plotly_dark",
         plot_bgcolor=DARK_BG,
