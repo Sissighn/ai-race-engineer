@@ -29,9 +29,9 @@ def plot_corner_type_performance(agg_df, key="corner_type_perf"):
         return
 
     color_map = {
-        "Low Speed": "#FFDD94",    # yellow
-        "Medium Speed": "#8FD3FE", # blue
-        "High Speed": "#FFB7D5",   # pink/red
+        "Low Speed": "#FFDD94",  # yellow
+        "Medium Speed": "#8FD3FE",  # blue
+        "High Speed": "#FFB7D5",  # pink/red
     }
 
     fig = px.bar(
