@@ -28,7 +28,11 @@ import streamlit as st  # noqa: F401
 from ._theme import _safe_plotly_chart, dark_layout
 from .corner_performance import plot_corner_type_performance
 from .driver_dna import plot_driver_dna
-from .speed_deltas import plot_apex_speed_share, plot_exit_speed_delta, plot_speed_deltas
+from .speed_deltas import (
+    plot_apex_speed_share,
+    plot_exit_speed_delta,
+    plot_speed_deltas,
+)
 from .telemetry import plot_brake_throttle, plot_gear_usage, plot_speed_profile
 from .time_loss import plot_time_loss_bar
 
