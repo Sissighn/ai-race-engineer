@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 class Navbar:
     def __init__(self):
-        # Pfade absolut sicherstellen
+        # Resolve absolute paths relative to this file to avoid working-directory issues
         self.script_path = os.path.dirname(os.path.abspath(__file__))
         self.assets_path = os.path.normpath(
             os.path.join(self.script_path, "..", "assets")
@@ -52,17 +52,17 @@ class Navbar:
             else ""
         )
 
-        # Platzhalter ersetzen
+        # Inject CSS and logo into the HTML template placeholders
         full_html = html_tpl.replace("{{CSS_STYLE}}", css_content).replace(
             "{{LOGO_HTML}}", logo_tag
         )
 
-        # DER FIX: Wir entfernen ALLES, was Streamlit als Markdown-Code interpretieren könnte.
-        # Wir machen aus dem HTML einen einzigen, langen String ohne Einrückungen.
+        # Collapse the HTML into a single line to prevent Streamlit from
+        # misinterpreting indented lines as Markdown code blocks.
         clean_html = "".join([line.strip() for line in full_html.splitlines()])
 
-        # Immer st.markdown verwenden – st.html() rendert in einem iframe,
-        # wodurch position:fixed relativ zum iframe ist statt zum Browser-Viewport.
+        # Use st.markdown instead of st.html — st.html renders inside an iframe,
+        # which breaks position:fixed (it becomes relative to the iframe, not the viewport).
         try:
             st.markdown(clean_html, unsafe_allow_html=True)
             logger.debug("Navbar rendered")
