@@ -37,7 +37,14 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=src --cov=app/components --cov-report=term-missing --cov-fail-under=80
+          pytest \
+            --cov=app/components \
+            --cov=src.exceptions \
+            --cov=src.config.settings \
+            --cov=src/models \
+            --cov=src.data.load_data \
+            --cov-report=term-missing \
+            --cov-fail-under=80
 
       - name: Upload coverage artifact
         if: always()
