@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from matplotlib.colors import LinearSegmentedColormap
+from plotly.subplots import make_subplots
 
 from src.data.load_data import load_telemetry_with_position
 from src.logging import get_logger
@@ -440,8 +441,9 @@ def plot_track_map_comparison(
         )
         st.warning(f"Metric '{metric}' not implemented. Using Speed instead.")
 
-    driver_panels = []
-    missing_drivers = []
+    prepared_by_driver: dict[str, dict] = {}
+    missing_drivers: list[str] = []
+    prepare_errors: dict[str, str] = {}
 
     for driver_code in [driver_a, driver_b]:
         tel = load_telemetry_with_position(session, driver_code)
@@ -451,7 +453,7 @@ def plot_track_map_comparison(
 
         try:
             prepared = _prepare_track_map_data(tel, metric_key)
-            driver_panels.append((driver_code, prepared))
+            prepared_by_driver[driver_code] = prepared
         except KeyError as missing_col:
             logger.error(
                 "Telemetry missing required comparison track-map column",
@@ -460,10 +462,9 @@ def plot_track_map_comparison(
                 track=track,
                 metric=metric_cfg["label"],
             )
-            st.error(
+            prepare_errors[driver_code] = (
                 f"Telemetry missing '{missing_col.args[0]}' for {driver_code} track map."
             )
-            return
         except Exception as e:
             logger.error(
                 "Track map comparison draw error",
@@ -471,15 +472,119 @@ def plot_track_map_comparison(
                 error=str(e),
                 exc_info=True,
             )
-            st.error(f"Track map draw error for {driver_code}: {e}")
-            return
+            prepare_errors[driver_code] = f"Track map draw error for {driver_code}: {e}"
 
     if missing_drivers:
         st.warning(
             f"No telemetry with position data for: {', '.join(missing_drivers)}."
         )
 
-    if not driver_panels:
+    if not prepared_by_driver:
+        # If no panel is renderable, still surface specific per-driver errors.
+        for driver_code in [driver_a, driver_b]:
+            if driver_code in prepare_errors:
+                st.error(prepare_errors[driver_code])
         return
 
-    _render_track_map_figure(track, driver_panels, metric_key)
+    # --- Build a single Plotly figure with two side-by-side subplots ---
+    # Using make_subplots avoids the Streamlit st.columns rendering issue
+    # where one plotly_chart widget can become invisible in a column.
+    drivers = [driver_a, driver_b]
+    subplot_titles = [f"{track} — {d}" for d in drivers]
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=subplot_titles,
+        horizontal_spacing=0.08,
+    )
+
+    # Compute shared colour scale across all available drivers.
+    value_arrays = [prepared["values"] for prepared in prepared_by_driver.values()]
+    vmin, vmax = _compute_shared_scale(value_arrays, metric_key)
+
+    for idx, driver_code in enumerate(drivers):
+        col = idx + 1  # Plotly subplots are 1-indexed
+        prepared = prepared_by_driver.get(driver_code)
+
+        if prepared is None:
+            # Show "no data" annotation in the empty subplot.
+            msg = prepare_errors.get(
+                driver_code, f"No track map data for {driver_code}"
+            )
+            fig.add_annotation(
+                text=msg,
+                xref=f"x{col}" if col > 1 else "x",
+                yref=f"y{col}" if col > 1 else "y",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(color=SUBTLE_TEXT, size=12),
+                row=1,
+                col=col,
+            )
+            continue
+
+        # Add track outline + coloured markers + start/finish marker.
+        for trace in _build_track_panel_traces(prepared):
+            fig.add_trace(trace, row=1, col=col)
+
+    # --- Shared layout ------------------------------------------------
+    fig.update_layout(
+        paper_bgcolor=DARK_PAPER,
+        plot_bgcolor=DARK_PAPER,
+        font=dict(color=TEXT_COLOR),
+        height=500,
+        margin=dict(l=10, r=80, t=52, b=10),
+        hovermode="closest",
+        hoverlabel=dict(bgcolor="#22252B", font=dict(color=TEXT_COLOR, size=12)),
+        coloraxis=dict(
+            colorscale=_matplotlib_cmap_to_plotly(metric_cfg["cmap"]),
+            cmin=vmin,
+            cmax=vmax,
+            colorbar=dict(
+                title=dict(
+                    text=f"{metric_cfg['label']} [{metric_cfg['unit']}]",
+                    font=dict(color=TEXT_COLOR, size=11),
+                ),
+                tickfont=dict(color=TEXT_COLOR, size=10),
+                thickness=16,
+                len=0.82,
+                x=1.02,
+                y=0.5,
+                outlinecolor=TEXT_COLOR,
+                bgcolor=DARK_PAPER,
+            ),
+        ),
+        showlegend=False,
+    )
+
+    # Style subplot titles to match the dark theme.
+    for annotation in fig.layout.annotations:
+        annotation.update(font=dict(size=12, color=TEXT_COLOR))
+
+    # Hide axes and lock 1:1 aspect ratio for each subplot independently.
+    for col in [1, 2]:
+        x_axis = f"xaxis{col}" if col > 1 else "xaxis"
+        y_axis = f"yaxis{col}" if col > 1 else "yaxis"
+        x_ref = f"x{col}" if col > 1 else "x"
+
+        fig.layout[x_axis].update(visible=False, showgrid=False, zeroline=False)
+        fig.layout[y_axis].update(
+            visible=False,
+            showgrid=False,
+            zeroline=False,
+            scaleanchor=x_ref,
+            scaleratio=1,
+        )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        key=f"track-map-comparison-{metric_key}-{track}",
+        config={
+            "displayModeBar": False,
+            "responsive": True,
+            "scrollZoom": False,
+        },
+    )
