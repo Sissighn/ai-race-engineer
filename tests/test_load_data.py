@@ -38,9 +38,10 @@ class _FakeLaps:
 
 
 class _FakeFastestLap:
-    def __init__(self, tel=None, telemetry=None):
+    def __init__(self, tel=None, telemetry=None, pos_data=None):
         self._tel = tel
         self._telemetry = telemetry
+        self._pos_data = pos_data
 
     def get_car_data(self):
         class _Car:
@@ -59,6 +60,13 @@ class _FakeFastestLap:
         if isinstance(self._telemetry, Exception):
             raise self._telemetry
         return self._telemetry.copy()
+
+    def get_pos_data(self):
+        if isinstance(self._pos_data, Exception):
+            raise self._pos_data
+        if self._pos_data is None:
+            raise AttributeError("no pos data")
+        return self._pos_data.copy()
 
 
 class _FakeSession:
@@ -224,6 +232,38 @@ def test_load_telemetry_with_position_success_fills_columns():
     assert "Distance" in out.columns
     assert "Speed" in out.columns
     assert out["Distance"].isna().sum() == 0
+
+
+def test_load_telemetry_with_position_falls_back_to_telemetry_if_pos_data_fails():
+    telemetry = pd.DataFrame(
+        {
+            "Time": pd.to_timedelta([0.0, 0.1, 0.2], unit="s"),
+            "X": [0.0, 1.0, 2.0],
+            "Y": [0.0, 1.0, 0.0],
+        }
+    )
+    car_df = pd.DataFrame(
+        {
+            "Time": pd.to_timedelta([0.0, 0.1, 0.2], unit="s"),
+            "Speed": [100.0, 120.0, 110.0],
+        }
+    )
+
+    fastest = _FakeFastestLap(
+        tel=car_df,
+        telemetry=telemetry,
+        pos_data=RuntimeError("pos source failed"),
+    )
+    sess = _FakeSession(
+        pd.Timestamp("2025-01-01", tz="UTC"),
+        laps=_FakeLaps(empty=False, fastest=fastest),
+    )
+
+    out = RAW_LOAD_TELEMETRY_WITH_POSITION(sess, "VER")
+
+    assert isinstance(out, pd.DataFrame)
+    assert not out.empty
+    assert {"X", "Y", "Speed", "Distance"}.issubset(set(out.columns))
 
 
 def test_get_tracks_for_year_handles_empty_and_success(monkeypatch):
