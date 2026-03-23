@@ -127,10 +127,6 @@ def test_plot_track_map_comparison_uses_shared_scale(monkeypatch):
         "app.components.track_map.st.warning", lambda *a, **k: warnings.append((a, k))
     )
     monkeypatch.setattr(
-        "app.components.track_map.st.columns",
-        lambda n, gap=None: [_DummyColumn() for _ in range(n)],
-    )
-    monkeypatch.setattr(
         "app.components.track_map.st.plotly_chart",
         lambda fig, **kwargs: captured.append((fig, kwargs)),
     )
@@ -140,25 +136,31 @@ def test_plot_track_map_comparison_uses_shared_scale(monkeypatch):
     )
 
     assert warnings == []
-    assert len(captured) == 2
+    # Single figure rendered via one st.plotly_chart call (subplots approach).
+    assert len(captured) == 1
 
-    for fig, kwargs in captured:
-        assert kwargs["use_container_width"] is True
-        assert kwargs["config"]["responsive"] is True
-        assert "track-map-speed-Silverstone-" in kwargs["key"]
-        assert fig.layout.coloraxis.cmin == pytest.approx(105.5)
-        assert fig.layout.coloraxis.cmax == pytest.approx(324.0)
+    fig, kwargs = captured[0]
+    assert kwargs["use_container_width"] is True
+    assert kwargs["config"]["responsive"] is True
+    assert "track-map-comparison-speed-Silverstone" in kwargs["key"]
 
-    assert captured[0][1]["key"] != captured[1][1]["key"]
+    # Shared colour scale applied to the single figure.
+    assert fig.layout.coloraxis.cmin == pytest.approx(105.5)
+    assert fig.layout.coloraxis.cmax == pytest.approx(324.0)
 
+    # Both drivers produce marker traces (one per subplot).
     marker_traces = [
         trace
-        for fig, _kwargs in captured
         for trace in fig.data
         if trace.type == "scatter" and trace.mode == "markers"
     ]
     assert len(marker_traces) == 2
     assert all(trace.marker.coloraxis == "coloraxis" for trace in marker_traces)
+
+    # Subplot titles for both drivers.
+    title_texts = [a.text for a in fig.layout.annotations]
+    assert "Silverstone — HAM" in title_texts
+    assert "Silverstone — VER" in title_texts
 
 
 def test_track_map_hover_template_includes_value_and_unit():
