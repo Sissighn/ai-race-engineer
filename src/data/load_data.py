@@ -321,12 +321,36 @@ def load_telemetry_with_position(
             logger.warning(msg, **log_context)
             return None
 
-        # Position data may be unavailable (especially pre-2018 seasons)
-        try:
-            pos = fastest.get_telemetry()[["Time", "X", "Y"]].copy()
-        except Exception as pos_err:
-            msg = f"No position data available for {driver_code} (common in older seasons)"
-            logger.warning(msg, error=str(pos_err), **log_context)
+        # Position data may be unavailable (especially older seasons).
+        # Prefer dedicated position feed first, then fallback to telemetry merge.
+        pos = None
+        pos_err = None
+
+        if hasattr(fastest, "get_pos_data"):
+            try:
+                pos = fastest.get_pos_data()[["Time", "X", "Y"]].copy()
+            except Exception as e:
+                pos_err = e
+
+        if pos is None or pos.empty:
+            try:
+                pos = fastest.get_telemetry()[["Time", "X", "Y"]].copy()
+            except Exception as tel_pos_err:
+                msg = (
+                    f"No position data available for {driver_code} "
+                    "(common in older seasons)"
+                )
+                logger.warning(
+                    msg,
+                    position_error=str(pos_err) if pos_err else None,
+                    telemetry_error=str(tel_pos_err),
+                    **log_context,
+                )
+                return None
+
+        if pos is None or pos.empty:
+            msg = f"No position samples available for {driver_code}"
+            logger.warning(msg, **log_context)
             return None
 
         pos["Time_s"] = pos["Time"].dt.total_seconds()
