@@ -1,3 +1,5 @@
+import html
+
 import streamlit as st
 
 from src.logging import get_logger
@@ -13,7 +15,9 @@ class GlowCard:
 
     @staticmethod
     def _inject_code():
-        # Inject CSS and JS once
+        # Inject CSS and JS once per page render
+        if st.session_state.get("_glow_card_injected"):
+            return
         try:
             st.markdown(
                 """
@@ -120,22 +124,31 @@ class GlowCard:
         """,
                 unsafe_allow_html=True,
             )
+            st.session_state["_glow_card_injected"] = True
         except Exception as e:
             logger.error(
                 "Failed to inject GlowCard assets", error=str(e), exc_info=True
             )
 
     @staticmethod
-    def render(title, value):
+    def render(title: str, value: str) -> None:
+        """Render a single glow card with the given title and value.
+
+        Args:
+            title: Card header text.
+            value: Card body text.
+        """
         GlowCard._inject_code()
+        safe_title = html.escape(str(title))
+        safe_value = html.escape(str(value))
 
         try:
             st.markdown(
                 f"""
         <div class="glow-card-wrapper">
             <div class="glow-card-content">
-                <div class="gc-title">{title}</div>
-                <div class="gc-value">{value}</div>
+                <div class="gc-title">{safe_title}</div>
+                <div class="gc-value">{safe_value}</div>
             </div>
         </div>
         """,
