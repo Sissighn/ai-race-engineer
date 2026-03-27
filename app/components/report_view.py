@@ -1,5 +1,7 @@
-import streamlit as st
+import html
 import re
+
+import streamlit as st
 
 from src.logging import get_logger
 
@@ -14,7 +16,7 @@ def render_race_engineer_report(report_data):
         logger.info("No report data provided")
         return
 
-    # 1. CSS Styles definieren
+    # 1. Define CSS styles
     st.markdown(
         """
     <style>
@@ -62,24 +64,24 @@ def render_race_engineer_report(report_data):
         unsafe_allow_html=True,
     )
 
-    # 2. Daten vorbereiten
+    # 2. Prepare data
     headline = report_data.get("headline", "")
     type_summary = report_data.get("type_summary", [])
     key_fix = report_data.get("key_fix", "")
 
-    # Helper: Markdown Bold (**) in HTML Bold (<b>) umwandeln
+    # Helper: Convert Markdown bold (**) to HTML bold (<b>)
     def md_to_html(text):
         if not text:
             return ""
         return re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
 
     headline_html = md_to_html(headline)
-    # Zeilenumbrüche mit <br> einfügen
+    # Join summary lines with line breaks
     summary_html = "<br>".join([md_to_html(s) for s in type_summary])
     fix_html = md_to_html(key_fix)
 
-    # 3. HTML Zusammenbauen (Ohne textwrap, direkt als String)
-    # Wir nutzen .strip(), um sicherzustellen, dass keine Leerzeichen Markdown verwirren.
+    # 3. Assemble HTML output
+    # Use .strip() to prevent whitespace from confusing Markdown rendering.
     html_content = f"""
 <div class="report-container">
     <div class="report-header">🏁 RACE ENGINEER SUMMARY // AI GENERATED</div>
