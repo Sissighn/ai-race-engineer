@@ -5,6 +5,12 @@ This module defines domain-specific exceptions for better error handling
 and debugging throughout the application.
 """
 
+from __future__ import annotations
+
+import logging
+from contextlib import contextmanager
+from typing import Callable, Optional, Type
+
 
 class AiRaceEngineerException(Exception):
     """Base exception class for all AI Race Engineer errors."""
@@ -167,10 +173,6 @@ class UIError(AiRaceEngineerException):
 # CONTEXT MANAGER FOR ERROR TRACKING
 # ─────────────────────────────────────────────────────────────────────
 
-
-from contextlib import contextmanager
-from typing import Type, Optional, Callable
-import logging
 
 logger = logging.getLogger(__name__)
 
