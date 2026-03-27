@@ -28,17 +28,10 @@ def run_page() -> None:
 
     context = load_home_context()
 
-    if hasattr(context, "display_event"):
-        display_event = context.display_event
-        next_session_name = context.next_session_name
-        season_year = context.season_year
-        next_session_time = context.next_session_time
-    else:
-        # Backward compatibility for dict payloads
-        display_event = context["display_event"]
-        next_session_name = context["next_session_name"]
-        season_year = context["season_year"]
-        next_session_time = context["next_session_time"]
+    display_event = context.display_event
+    next_session_name = context.next_session_name
+    season_year = context.season_year
+    next_session_time = context.next_session_time
 
     render_latest_gp(
         display_event=display_event,
