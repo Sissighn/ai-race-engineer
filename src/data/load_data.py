@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 cache_path = str(settings.CACHE_DIR)
 os.makedirs(cache_path, exist_ok=True)
 
-# Cache aktivieren
+# Enable FastF1 cache
 try:
     if settings.FASTF1_CACHE_ENABLED:
         fastf1.Cache.enable_cache(cache_path)
@@ -68,27 +68,49 @@ def clear_specific_session_cache(year: int, grand_prix: str, session_type: str) 
     """
     Attempt to clear cache for a specific session if corrupted.
 
+    Removes cached pickle files for the given session so that
+    the next load will re-fetch fresh data from the API.
+
     Args:
         year: Championship year
         grand_prix: Grand Prix name
         session_type: Session type (Q, R, FP1, etc.)
 
     Returns:
-        True if attempted, False on error
+        True if cache was cleared or did not exist, False on error
     """
+    import glob
+    import shutil
+
     try:
         year_path = os.path.join(cache_path, str(year))
-        if os.path.exists(year_path):
-            # We don't automatically delete to avoid data loss,
-            # but we signal that reload is needed.
+        if not os.path.exists(year_path):
             logger.info(
-                "Cache clear requested",
+                "No cache directory to clear",
                 year=year,
                 grand_prix=grand_prix,
                 session_type=session_type,
             )
-            pass
+            return True
 
+        # Look for directories matching the grand prix name
+        gp_pattern = os.path.join(year_path, f"*{grand_prix}*")
+        matching_dirs = glob.glob(gp_pattern)
+
+        removed_count = 0
+        for match_dir in matching_dirs:
+            if os.path.isdir(match_dir):
+                shutil.rmtree(match_dir)
+                removed_count += 1
+                logger.info("Removed cache directory", path=match_dir)
+
+        logger.info(
+            "Cache clear complete",
+            year=year,
+            grand_prix=grand_prix,
+            session_type=session_type,
+            removed=removed_count,
+        )
         return True
     except Exception as e:
         logger.error(
@@ -101,7 +123,7 @@ def clear_specific_session_cache(year: int, grand_prix: str, session_type: str) 
 
 
 # ---------------------------------------------------------
-# 1. LOAD SESSION (Robuster mit Retry)
+# 1. LOAD SESSION (Robust with Retry)
 # ---------------------------------------------------------
 
 
