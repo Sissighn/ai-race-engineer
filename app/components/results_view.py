@@ -1,5 +1,7 @@
-import pandas as pd
+import html as html_module
 import re
+
+import pandas as pd
 
 from src.logging import get_logger
 
@@ -32,19 +34,28 @@ def format_f1_time(raw):
     return f"{total_mins}:{secs:06.3f}"
 
 
-def render_f1_table(df, title):
+def render_f1_table(df, title: str) -> str:
     """
-    Renders a dataframe as an HTML table wrapped in the
-    GlowCard structure. Uses 'glow-large' for better visibility on big elements.
+    Render a DataFrame as an HTML table wrapped in the GlowCard structure.
+
+    Uses 'glow-large' class for better visibility on big elements.
+    Title is HTML-escaped to prevent injection.
+
+    Args:
+        df: DataFrame to render, or None for empty state.
+        title: Human-readable title for the table card.
+
+    Returns:
+        HTML string ready for st.markdown(unsafe_allow_html=True).
     """
+    safe_title = html_module.escape(str(title))
     # 1. Handle Empty State
     if df is None or df.empty:
         logger.info("No data for F1 table", title=title)
-        # ADDED CLASS: glow-large
         return f"""
         <div class="glow-card-wrapper glow-large" style="max-width: 900px; margin: 10px auto;">
             <div class="glow-card-content">
-                <h3 style="margin-top:0;">{title}</h3>
+                <h3 style="margin-top:0;">{safe_title}</h3>
                 <p style="color:#AAA;">No data yet.</p>
             </div>
         </div>
@@ -74,7 +85,7 @@ def render_f1_table(df, title):
         return f"""
         <div class="glow-card-wrapper glow-large" style="max-width: 900px; margin: 10px auto;">
             <div class="glow-card-content">
-                <h3 style="margin-top:0;">{title}</h3>
+                <h3 style="margin-top:0;">{safe_title}</h3>
                 <p style="color:#AAA;">Could not render table.</p>
             </div>
         </div>
@@ -84,7 +95,7 @@ def render_f1_table(df, title):
     return f"""
     <div class="glow-card-wrapper glow-large" style="width: 100%; max-width: 900px; margin: 10px auto;">
         <div class="glow-card-content" style="padding: 20px;">
-            <h3 style="margin-top:0; margin-bottom: 15px;">{title}</h3>
+            <h3 style="margin-top:0; margin-bottom: 15px;">{safe_title}</h3>
             <div class="table-responsive">
                 {html_table}
             </div>
