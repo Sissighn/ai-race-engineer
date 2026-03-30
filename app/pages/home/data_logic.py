@@ -66,7 +66,7 @@ def load_home_context() -> HomeContextPayload:
         logger.error(
             "Latest session payload missing key", missing_key=str(e), exc_info=True
         )
-        st.error("Session-Daten haben ein ungültiges Format.")
+        st.error("Session data has an invalid format.")
         st.stop()
     except Exception as e:
         logger.error("Failed to load latest sessions", error=str(e), exc_info=True)

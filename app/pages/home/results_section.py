@@ -10,6 +10,12 @@ logger = get_logger(__name__)
 
 
 def render_results_tables(season_year: int, started_events: list) -> None:
+    """Render navigable results tables for all started events in a season.
+
+    Args:
+        season_year: F1 season year.
+        started_events: List of event Series objects that have started.
+    """
     if not started_events:
         st.warning("No events have started yet this season.")
         return
