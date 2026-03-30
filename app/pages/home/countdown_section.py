@@ -3,6 +3,11 @@ import streamlit as st
 
 
 def render_countdown_section(next_session_time) -> None:
+    """Render a countdown card showing time until next F1 session.
+
+    Args:
+        next_session_time: UTC timestamp of the next session, or None/NaT.
+    """
     st.markdown(
         "<h2 class='section-title'>Next Session Countdown</h2>",
         unsafe_allow_html=True,
