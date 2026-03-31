@@ -14,10 +14,26 @@ from src.models import ComparisonComputeResult, CornerAnalysisPayload
 
 
 def get_tracks_for_year_for_ui(year: int) -> list[str]:
+    """Return the list of track names for a given season year.
+
+    Args:
+        year: F1 championship year.
+
+    Returns:
+        List of track/location names.
+    """
     return get_tracks_for_year(year)
 
 
 def build_driver_map(session: Any) -> tuple[list[str], dict[str, str], list[str]]:
+    """Build a driver selection map from a loaded FastF1 session.
+
+    Args:
+        session: FastF1 Session object with loaded data.
+
+    Returns:
+        Tuple of (display_labels, label_to_code_map, drivers_without_telemetry).
+    """
     drivers_with_cardata: set[str] = set()
     if hasattr(session, "car_data") and session.car_data:
         try:
@@ -58,6 +74,16 @@ def build_driver_map(session: Any) -> tuple[list[str], dict[str, str], list[str]
 def compare_session_drivers(
     session: Any, driver_a: str, driver_b: str
 ) -> ComparisonComputeResult:
+    """Run full telemetry comparison between two drivers.
+
+    Args:
+        session: FastF1 Session object.
+        driver_a: 3-letter driver code for the first driver.
+        driver_b: 3-letter driver code for the second driver.
+
+    Returns:
+        ComparisonComputeResult with telemetry, comparison, and time loss data.
+    """
     tel_a = load_telemetry(session, driver_a)
     tel_b = load_telemetry(session, driver_b)
 
@@ -89,6 +115,16 @@ def compare_session_drivers(
 
 
 def build_corner_analysis(tl, driver_a: str, driver_b: str) -> CornerAnalysisPayload:
+    """Classify corners and generate analysis payload.
+
+    Args:
+        tl: Time-loss DataFrame from driver comparison.
+        driver_a: First driver code.
+        driver_b: Second driver code.
+
+    Returns:
+        CornerAnalysisPayload with classified corners, aggregations, and advice.
+    """
     tl_classified = add_corner_classification(tl)
     agg_types = aggregate_time_loss_by_type(tl_classified)
     advice_list = []
@@ -111,7 +147,19 @@ def build_race_engineer_report(
     driver_a: str,
     driver_b: str,
     track: str,
-):
+) -> dict | None:
+    """Generate a race engineer report from classified corner data.
+
+    Args:
+        tl_classified: Time-loss DataFrame with CornerType classification.
+        agg_types: Aggregated time loss by corner type.
+        driver_a: First driver code.
+        driver_b: Second driver code.
+        track: Track name for the report header.
+
+    Returns:
+        Report dictionary or None if insufficient data.
+    """
     if agg_types is None or tl_classified is None or tl_classified.empty:
         return None
 
@@ -125,4 +173,14 @@ def build_race_engineer_report(
 
 
 def build_coaching_suggestions(tl, driver_a: str, driver_b: str) -> list[str]:
+    """Generate AI coaching suggestions from time-loss data.
+
+    Args:
+        tl: Time-loss DataFrame from driver comparison.
+        driver_a: First driver code.
+        driver_b: Second driver code.
+
+    Returns:
+        List of coaching suggestion strings.
+    """
     return coaching_suggestions(tl, driver_a, driver_b)

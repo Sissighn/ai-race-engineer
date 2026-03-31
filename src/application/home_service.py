@@ -34,7 +34,7 @@ def get_home_context(year: Optional[int] = None) -> HomeContextPayload:
     )
 
     event_date = display_event["EventDate"]
-    season_year = int(str(event_date)[:4])
+    season_year = int(pd.Timestamp(event_date).year)
 
     return HomeContextPayload(
         events_df=events_df,
