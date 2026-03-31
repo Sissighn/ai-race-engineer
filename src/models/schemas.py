@@ -73,9 +73,11 @@ class ComparisonComputeResult(BaseModel):
 
 
 class ComparisonSessionState(BaseModel):
+    """Immutable state object holding a complete driver comparison result."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    session: object
+    session: object  # FastF1 Session – not serializable, hence 'object'
     driver_a: str
     driver_b: str
     tel_a: pd.DataFrame

@@ -17,6 +17,14 @@ CORNER_SPEED_MEDIUM = 180
 
 
 def classify_corner_type(speed: float) -> str:
+    """Classify a corner as Low/Medium/High Speed based on apex speed.
+
+    Args:
+        speed: Apex speed in km/h.
+
+    Returns:
+        One of 'Low Speed', 'Medium Speed', 'High Speed', or 'Unknown'.
+    """
     if pd.isna(speed):
         return "Unknown"
 
@@ -54,11 +62,11 @@ def add_corner_classification(
         for col in possible_cols:
             if col in df.columns:
                 target_col = col
-                logger.debug(f"Using column for classification: {col}")
+                logger.debug("Using column for classification", column=col)
                 break
 
         if target_col is None:
-            msg = f"No apex speed column found. Available: {list(df.columns)}"
+            msg = f"No apex speed column found. Available: {list(df.columns)}"  # kept as f-string for exception message
             logger.error(msg, **log_context)
             raise ValidationError(msg)
 

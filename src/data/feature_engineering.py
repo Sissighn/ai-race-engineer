@@ -68,7 +68,6 @@ def segment_corners(
         logger.debug("Apexes detected", apex_count=len(apex_indices), **log_context)
 
         segments = []
-        corner_id = 1
 
         for apex in apex_indices:
             # Apex distance
@@ -87,7 +86,6 @@ def segment_corners(
             exit_dist = df["Distance"].iloc[exit]
 
             segments.append((entry_dist, apex_dist, exit_dist))
-            corner_id += 1
 
         # Assign Corner ID to telemetry
         df["Corner"] = 0
