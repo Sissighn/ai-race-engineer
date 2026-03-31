@@ -55,24 +55,14 @@ def render_comparison_results(session_type: str, track: str) -> None:
     if not st.session_state.get("compare_result"):
         return
 
-    # Extract comparison data with backward compatibility handling
-    data = st.session_state["compare_result"]
-    if isinstance(data, ComparisonSessionState):
-        # Modern payload structure
-        tl = data.tl
-        tel_a = data.tel_a
-        tel_b = data.tel_b
-        driver_a = data.driver_a
-        driver_b = data.driver_b
-        session = data.session
-    else:
-        # Backward compatibility for pre-refactor session state payloads
-        tl = data["tl"]
-        tel_a = data["telA"]
-        tel_b = data["telB"]
-        driver_a = data["driverA"]
-        driver_b = data["driverB"]
-        session = data["session"]
+    # Extract comparison data from session state
+    data: ComparisonSessionState = st.session_state["compare_result"]
+    tl = data.tl
+    tel_a = data.tel_a
+    tel_b = data.tel_b
+    driver_a = data.driver_a
+    driver_b = data.driver_b
+    session = data.session
 
     # Perform corner analysis to extract time loss classification and insights
     corner_analysis = build_corner_analysis(tl, driver_a=driver_a, driver_b=driver_b)

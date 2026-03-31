@@ -1,3 +1,5 @@
+import html
+
 import pandas as pd
 import streamlit as st
 
@@ -5,9 +7,15 @@ from app.components.glow_card import GlowCard
 
 
 def render_latest_gp(display_event, next_session_name: str) -> None:
-    event_long = display_event["EventName"]
-    location = display_event["Location"]
-    country = display_event["Country"]
+    """Render the latest Grand Prix summary section.
+
+    Args:
+        display_event: Pandas Series with event metadata (EventName, Location, etc.).
+        next_session_name: Human-readable name of the upcoming session.
+    """
+    event_long = html.escape(str(display_event["EventName"]))
+    location = html.escape(str(display_event["Location"]))
+    country = html.escape(str(display_event["Country"]))
     event_date = display_event["EventDate"]
 
     st.markdown(

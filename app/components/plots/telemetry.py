@@ -18,19 +18,19 @@ from ._theme import PASTEL_COLORS, _safe_plotly_chart, dark_layout
 logger = get_logger(__name__)
 
 
-def plot_speed_profile(telA, telB, driverA, driverB, key="speed_profile"):
+def plot_speed_profile(tel_a, tel_b, driver_a, driver_b, key="speed_profile"):
     """Overlay both drivers' speed traces on a single Distance vs Speed line chart.
 
     Args:
-        telA:    Telemetry DataFrame for driver A (must contain Distance, Speed).
-        telB:    Telemetry DataFrame for driver B (must contain Distance, Speed).
-        driverA: Display name for driver A.
-        driverB: Display name for driver B.
-        key:     Streamlit widget key.
+        tel_a:    Telemetry DataFrame for driver A (must contain Distance, Speed).
+        tel_b:    Telemetry DataFrame for driver B (must contain Distance, Speed).
+        driver_a: Display name for driver A.
+        driver_b: Display name for driver B.
+        key:      Streamlit widget key.
     """
-    if telA is None or telB is None or telA.empty or telB.empty:
+    if tel_a is None or tel_b is None or tel_a.empty or tel_b.empty:
         logger.warning(
-            "Missing telemetry for speed profile", driver_a=driverA, driver_b=driverB
+            "Missing telemetry for speed profile", driver_a=driver_a, driver_b=driver_b
         )
         st.info("Speed profile unavailable.")
         return
@@ -39,49 +39,49 @@ def plot_speed_profile(telA, telB, driverA, driverB, key="speed_profile"):
 
     fig.add_trace(
         go.Scatter(
-            x=telA["Distance"],
-            y=telA["Speed"],
+            x=tel_a["Distance"],
+            y=tel_a["Speed"],
             mode="lines",
-            name=f"{driverA} Speed",
+            name=f"{driver_a} Speed",
             line=dict(color="#A48FFF", width=2),
         )
     )
 
     fig.add_trace(
         go.Scatter(
-            x=telB["Distance"],
-            y=telB["Speed"],
+            x=tel_b["Distance"],
+            y=tel_b["Speed"],
             mode="lines",
-            name=f"{driverB} Speed",
+            name=f"{driver_b} Speed",
             line=dict(color="#FFB7D5", width=2),
         )
     )
 
-    fig = dark_layout(fig, f"Speed Profile – {driverA} vs {driverB}")
+    fig = dark_layout(fig, f"Speed Profile – {driver_a} vs {driver_b}")
     fig.update_xaxes(title_text="Distance (m)")
     fig.update_yaxes(title_text="Speed (km/h)")
 
     _safe_plotly_chart(fig, key=key, context="speed_profile")
 
 
-def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
+def plot_brake_throttle(tel_a, tel_b, driver_a, driver_b, key="brake_throttle"):
     """Overlay brake and throttle traces for both drivers against lap distance.
 
     Four traces are drawn in total: brake and throttle for each driver, each
     with a distinct colour so inputs can be compared at every point on track.
 
     Args:
-        telA:    Telemetry DataFrame for driver A (must contain Distance, Brake, Throttle).
-        telB:    Telemetry DataFrame for driver B (must contain Distance, Brake, Throttle).
-        driverA: Display name for driver A.
-        driverB: Display name for driver B.
-        key:     Streamlit widget key.
+        tel_a:    Telemetry DataFrame for driver A (must contain Distance, Brake, Throttle).
+        tel_b:    Telemetry DataFrame for driver B (must contain Distance, Brake, Throttle).
+        driver_a: Display name for driver A.
+        driver_b: Display name for driver B.
+        key:      Streamlit widget key.
     """
-    if telA is None or telB is None or telA.empty or telB.empty:
+    if tel_a is None or tel_b is None or tel_a.empty or tel_b.empty:
         logger.warning(
             "Missing telemetry for brake/throttle plot",
-            driver_a=driverA,
-            driver_b=driverB,
+            driver_a=driver_a,
+            driver_b=driver_b,
         )
         st.info("Brake/Throttle plot unavailable.")
         return
@@ -91,18 +91,18 @@ def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
     # --- Driver A ---
     fig.add_trace(
         go.Scatter(
-            x=telA["Distance"],
-            y=telA["Brake"],
-            name=f"{driverA} Brake",
+            x=tel_a["Distance"],
+            y=tel_a["Brake"],
+            name=f"{driver_a} Brake",
             mode="lines",
             line=dict(color="#A48FFF", width=2),
         )
     )
     fig.add_trace(
         go.Scatter(
-            x=telA["Distance"],
-            y=telA["Throttle"],
-            name=f"{driverA} Throttle",
+            x=tel_a["Distance"],
+            y=tel_a["Throttle"],
+            name=f"{driver_a} Throttle",
             mode="lines",
             line=dict(color="#8FD3FE", width=2),
         )
@@ -111,24 +111,24 @@ def plot_brake_throttle(telA, telB, driverA, driverB, key="brake_throttle"):
     # --- Driver B ---
     fig.add_trace(
         go.Scatter(
-            x=telB["Distance"],
-            y=telB["Brake"],
-            name=f"{driverB} Brake",
+            x=tel_b["Distance"],
+            y=tel_b["Brake"],
+            name=f"{driver_b} Brake",
             mode="lines",
             line=dict(color="#FFB7D5", width=2),
         )
     )
     fig.add_trace(
         go.Scatter(
-            x=telB["Distance"],
-            y=telB["Throttle"],
-            name=f"{driverB} Throttle",
+            x=tel_b["Distance"],
+            y=tel_b["Throttle"],
+            name=f"{driver_b} Throttle",
             mode="lines",
             line=dict(color="#FFDD94", width=2),
         )
     )
 
-    fig = dark_layout(fig, f"Brake & Throttle – {driverA} vs {driverB}")
+    fig = dark_layout(fig, f"Brake & Throttle – {driver_a} vs {driver_b}")
     fig.update_xaxes(title_text="Distance (m)")
     fig.update_yaxes(title_text="Input (%)")
 
