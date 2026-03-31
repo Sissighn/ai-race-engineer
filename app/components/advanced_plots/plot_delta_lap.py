@@ -54,3 +54,4 @@ def plot_delta_lap(delta_df, driverA, driverB):
     ax.tick_params(axis="y", colors="white")
 
     st.pyplot(fig)
+    plt.close(fig)
