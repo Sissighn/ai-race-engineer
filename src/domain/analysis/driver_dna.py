@@ -25,11 +25,13 @@ def calculate_driver_dna(telemetry: Optional[pd.DataFrame]) -> dict[str, float]:
         logger.info("Calculating driver DNA", **log_context)
 
         telemetry_work = telemetry.copy()
+        # 0.1s is the standard FastF1 telemetry sampling interval
         telemetry_work["acc"] = telemetry_work["Speed"].diff() / 0.1
         braking_zones = telemetry_work[telemetry_work["Brake"] > 0]
 
         if not braking_zones.empty:
             top_decel = braking_zones["acc"].abs().quantile(0.95)
+            # Map 95th-percentile deceleration: 50 km/h/s (gentle) → 0, 200 km/h/s (hard) → 100
             aggressiveness = np.interp(top_decel, [50, 200], [0, 100])
         else:
             aggressiveness = 50
@@ -118,6 +120,17 @@ def compare_driver_dna(
 def get_driver_dna_comparison_df(
     tel_driver_1: pd.DataFrame, tel_driver_2: pd.DataFrame, name_1: str, name_2: str
 ) -> pd.DataFrame:
+    """Build a comparison DataFrame of driver DNA metrics for two drivers.
+
+    Args:
+        tel_driver_1: Telemetry for the first driver.
+        tel_driver_2: Telemetry for the second driver.
+        name_1: Display name for the first driver.
+        name_2: Display name for the second driver.
+
+    Returns:
+        DataFrame with columns Metric, name_1, name_2 – or empty if DNA unavailable.
+    """
     dna_1 = calculate_driver_dna(tel_driver_1)
     dna_2 = calculate_driver_dna(tel_driver_2)
 

@@ -32,13 +32,13 @@ def get_latest_sessions(year: Optional[int] = None) -> LatestSessionsPayload:
     if year is None:
         year = pd.Timestamp.now().year
 
-    logger.info(f"Loading F1 schedule for year {year}")
+    logger.info("Loading F1 schedule", year=year)
 
     try:
         # Full F1 calendar for the season (exclude pre-season testing)
         events = fastf1.get_event_schedule(year, include_testing=False)
     except Exception as e:
-        logger.error(f"Failed to load event schedule: {e}")
+        logger.error("Failed to load event schedule", year=year, error=str(e))
         raise ValueError(f"Could not load F1 schedule for {year}: {e}")
 
     if events is None or events.empty:
@@ -60,7 +60,7 @@ def get_latest_sessions(year: Optional[int] = None) -> LatestSessionsPayload:
         if col in events.columns:
             events[col] = pd.to_datetime(events[col], utc=True, errors="coerce")
         else:
-            logger.warning(f"Column {col} not found in events DataFrame")
+            logger.warning("Column not found in events DataFrame", column=col)
 
     # Calculate LastSessionDateUtc (max of all sessions)
     available_session_cols = [col for col in session_cols if col in events.columns]
@@ -108,7 +108,7 @@ def get_latest_sessions(year: Optional[int] = None) -> LatestSessionsPayload:
         if pd.notna(last_session) and last_session < now:
             latest_completed_index = int(idx)
 
-    logger.info(f"Latest completed event index: {latest_completed_index}")
+    logger.info("Latest completed event index", index=latest_completed_index)
 
     # ---------------------------
     # Find next session (across all events)
@@ -152,7 +152,9 @@ def get_latest_sessions(year: Optional[int] = None) -> LatestSessionsPayload:
         next_session_name = earliest["name"]
         next_session_time = earliest["time"]
         next_event_index = earliest["event_index"]
-        logger.info(f"Next session: {next_session_name} at {next_session_time}")
+        logger.info(
+            "Next session found", name=next_session_name, time=str(next_session_time)
+        )
     else:
         logger.info("No future sessions found - season finished")
 
@@ -183,19 +185,31 @@ def load_single_session_results(
     # Validate session type
     valid_sessions = ["Q", "R", "S", "SQ", "FP1", "FP2", "FP3"]
     if session_type not in valid_sessions:
-        logger.warning(f"Invalid session type: {session_type}")
+        logger.warning("Invalid session type", session_type=session_type)
         return None
 
     try:
-        logger.info(f"Loading {session_type} session for {event_key} ({year})")
+        logger.info(
+            "Loading session results",
+            session_type=session_type,
+            event_key=event_key,
+            year=year,
+        )
         session = fastf1.get_session(year, event_key, session_type)
         session.load()
     except Exception as e:
-        logger.warning(f"Failed to load {session_type} for {event_key}: {e}")
+        logger.warning(
+            "Failed to load session",
+            session_type=session_type,
+            event_key=event_key,
+            error=str(e),
+        )
         return None
 
     if session.results is None or session.results.empty:
-        logger.info(f"No results available for {session_type} at {event_key}")
+        logger.info(
+            "No results available", session_type=session_type, event_key=event_key
+        )
         return None
 
     try:
@@ -217,7 +231,9 @@ def load_single_session_results(
 
         if not keep_cols:
             logger.warning(
-                f"No expected columns found in results for {event_key} {session_type}"
+                "No expected columns found in results",
+                event_key=event_key,
+                session_type=session_type,
             )
             return None
 
@@ -234,12 +250,20 @@ def load_single_session_results(
             df = df.sort_values("Position")
 
         logger.info(
-            f"Successfully loaded {len(df)} results for {session_type} at {event_key}"
+            "Successfully loaded results",
+            count=len(df),
+            session_type=session_type,
+            event_key=event_key,
         )
         return df.reset_index(drop=True)
 
     except Exception as e:
-        logger.error(f"Error processing results for {event_key} {session_type}: {e}")
+        logger.error(
+            "Error processing results",
+            event_key=event_key,
+            session_type=session_type,
+            error=str(e),
+        )
         return None
 
 
@@ -261,14 +285,14 @@ def get_season_results(year: int, event_key: str) -> SeasonResultsPayload:
     """
 
     if not isinstance(year, int) or year < 1950 or year > 2100:
-        logger.error(f"Invalid year: {year}")
+        logger.error("Invalid year", year=year)
         return SeasonResultsPayload()
 
     if not event_key or not isinstance(event_key, str):
-        logger.error(f"Invalid event_key: {event_key}")
+        logger.error("Invalid event_key", event_key=event_key)
         return SeasonResultsPayload()
 
-    logger.info(f"Loading all session results for {event_key} ({year})")
+    logger.info("Loading all session results", event_key=event_key, year=year)
 
     results = {
         "Q": load_single_session_results(year, event_key, "Q"),
@@ -278,7 +302,7 @@ def get_season_results(year: int, event_key: str) -> SeasonResultsPayload:
     }
 
     loaded_sessions = [k for k, v in results.items() if v is not None]
-    logger.info(f"Loaded sessions for {event_key}: {loaded_sessions}")
+    logger.info("Loaded sessions", event_key=event_key, sessions=loaded_sessions)
 
     return SeasonResultsPayload(
         Q=results["Q"],
