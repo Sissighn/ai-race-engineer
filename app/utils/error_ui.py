@@ -70,10 +70,14 @@ def show_domain_error(
     elif isinstance(exc, TelemetryError):
         if context == "comparison":
             st.error(
-                "Telemetry could not be processed. Please try different drivers/session."
+                "Telemetry data is not available for this session yet. "
+                "Please choose a different year, track, or session."
             )
         else:
-            st.error("Telemetry data could not be processed.")
+            st.error(
+                "Telemetry data is not available for this session yet. "
+                "Please try another session."
+            )
     elif isinstance(exc, DataError):
         st.error("Event data is incomplete or invalid.")
     elif isinstance(exc, ComparisonError):
