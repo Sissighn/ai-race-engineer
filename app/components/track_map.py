@@ -337,7 +337,7 @@ def _render_track_map_figure(
         )
         st.plotly_chart(
             fig,
-            use_column_width=True,
+            width="stretch",
             key=f"track-map-{metric_key}-{track}-{driver_code}",
             config={
                 "displayModeBar": False,
@@ -361,7 +361,7 @@ def _render_track_map_figure(
         with column:
             st.plotly_chart(
                 fig,
-                use_column_width=True,
+                width="stretch",
                 key=f"track-map-{metric_key}-{track}-{driver_code}-{idx}",
                 config={
                     "displayModeBar": False,
@@ -580,7 +580,7 @@ def plot_track_map_comparison(
 
     st.plotly_chart(
         fig,
-        use_column_width=True,
+        width="stretch",
         key=f"track-map-comparison-{metric_key}-{track}",
         config={
             "displayModeBar": False,
