@@ -39,7 +39,7 @@ def _safe_plotly_chart(fig, key=None, context="plot"):
         context: Human-readable label used in error logs to identify the chart.
     """
     try:
-        st.plotly_chart(fig, use_container_width=True, key=key)
+        st.plotly_chart(fig, use_column_width=True, key=key)
     except Exception as e:
         logger.error(
             "Failed to render plot", context=context, key=str(key), error=str(e)
