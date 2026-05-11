@@ -140,7 +140,7 @@ def test_plot_track_map_comparison_uses_shared_scale(monkeypatch):
     assert len(captured) == 1
 
     fig, kwargs = captured[0]
-    assert kwargs["use_container_width"] is True
+    assert kwargs["use_column_width"] is True
     assert kwargs["config"]["responsive"] is True
     assert "track-map-comparison-speed-Silverstone" in kwargs["key"]
 
