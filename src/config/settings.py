@@ -31,15 +31,19 @@ class Settings:
     # PATHS
     # ─────────────────────────────────────────────────────────────────
 
-    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
-    DATA_DIR: Path = PROJECT_ROOT / "data"
-    CACHE_DIR: Path = PROJECT_ROOT / "cache"
-    LOGS_DIR: Path = PROJECT_ROOT / "logs"
+    PROJECT_ROOT: Path = Path(
+        os.getenv("AI_RACE_ENGINEER_ROOT", Path(__file__).parent.parent.parent)
+    ).resolve()
+    DATA_DIR: Path = Path(os.getenv("AI_RACE_ENGINEER_DATA_DIR", PROJECT_ROOT / "data"))
+    CACHE_DIR: Path = Path(
+        os.getenv("AI_RACE_ENGINEER_CACHE_DIR", PROJECT_ROOT / "cache")
+    )
+    LOGS_DIR: Path = Path(os.getenv("AI_RACE_ENGINEER_LOGS_DIR", PROJECT_ROOT / "logs"))
 
     # Ensure directories exist
-    DATA_DIR.mkdir(exist_ok=True)
-    CACHE_DIR.mkdir(exist_ok=True)
-    LOGS_DIR.mkdir(exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     # ─────────────────────────────────────────────────────────────────
     # FASTF1 API SETTINGS
