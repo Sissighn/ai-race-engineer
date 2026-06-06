@@ -185,9 +185,132 @@ def test_track_map_hover_template_includes_value_and_unit():
     assert hover_trace.customdata.shape == (3, 2)
 
 
-def test_sanitize_metric_values_clips_unrealistic_speed_spikes():
+def test_sanitize_metric_values_interpolates_unrealistic_speed_spikes():
     cleaned = track_map._sanitize_metric_values([110.0, 5200.0, 315.0], "speed")
 
     assert cleaned[0] == 110.0
-    assert cleaned[1] == 380.0
+    assert cleaned[1] == pytest.approx(212.5)
     assert cleaned[2] == 315.0
+
+
+def test_resample_replay_trace_sanitizes_unrealistic_speed_spikes():
+    replay = track_map._resample_replay_trace(
+        pd.DataFrame(
+            {
+                "X": [0.0, 10.0, 20.0, 30.0],
+                "Y": [0.0, 5.0, 0.0, -5.0],
+                "Distance": [0.0, 100.0, 200.0, 300.0],
+                "Speed": [120.0, 1700.0, 220.0, 240.0],
+            }
+        ),
+        "VER",
+        frame_count=4,
+    )
+
+    assert replay["speed"].max() <= 380.0
+    assert replay["speed"].max() == pytest.approx(240.0)
+
+
+def test_resample_replay_trace_outputs_fixed_frame_count():
+    replay = track_map._resample_replay_trace(
+        pd.DataFrame(
+            {
+                "X": [0.0, 10.0, 20.0, 30.0],
+                "Y": [0.0, 5.0, 0.0, -5.0],
+                "Distance": [0.0, 100.0, 200.0, 300.0],
+                "Speed": [100.0, 140.0, 180.0, 160.0],
+            }
+        ),
+        "VER",
+        frame_count=24,
+    )
+
+    assert replay["driver"] == "VER"
+    assert len(replay["x"]) == 24
+    assert len(replay["y"]) == 24
+    assert len(replay["speed"]) == 24
+    assert replay["progress"][0] == pytest.approx(0.0)
+    assert replay["progress"][-1] == pytest.approx(1.0)
+
+
+def test_create_pit_wall_replay_figure_contains_animation_frames():
+    replay_data = [
+        track_map._resample_replay_trace(
+            pd.DataFrame(
+                {
+                    "X": [0.0, 10.0, 20.0, 30.0],
+                    "Y": [0.0, 5.0, 0.0, -5.0],
+                    "Distance": [0.0, 100.0, 200.0, 300.0],
+                    "Speed": [100.0, 140.0, 180.0, 160.0],
+                }
+            ),
+            "VER",
+            frame_count=18,
+        ),
+        track_map._resample_replay_trace(
+            pd.DataFrame(
+                {
+                    "X": [1.0, 11.0, 21.0, 31.0],
+                    "Y": [1.0, 6.0, 1.0, -4.0],
+                    "Distance": [0.0, 100.0, 200.0, 300.0],
+                    "Speed": [98.0, 138.0, 178.0, 158.0],
+                }
+            ),
+            "HAM",
+            frame_count=18,
+        ),
+    ]
+
+    fig = track_map._create_pit_wall_replay_figure(
+        "Silverstone",
+        "2024 Qualifying",
+        replay_data,
+    )
+
+    assert len(fig.frames) == 18
+    assert "Silverstone Live Track Map" in fig.layout.title.text
+    assert "fastest-lap telemetry replay" in fig.layout.title.text
+    assert fig.layout.updatemenus[0].buttons[0].label == "PLAY"
+    assert fig.layout.sliders[0].steps[0].method == "animate"
+
+
+def test_plot_pit_wall_track_replay_renders_available_drivers(monkeypatch):
+    captured = []
+
+    data = {
+        "VER": pd.DataFrame(
+            {
+                "X": [0.0, 10.0, 20.0, 30.0],
+                "Y": [0.0, 5.0, 0.0, -5.0],
+                "Distance": [0.0, 100.0, 200.0, 300.0],
+                "Speed": [100.0, 140.0, 180.0, 160.0],
+            }
+        )
+    }
+
+    monkeypatch.setattr(
+        "app.components.track_map.load_telemetry_with_position",
+        lambda _session, driver_code: data.get(driver_code, pd.DataFrame()),
+    )
+    monkeypatch.setattr(
+        "app.components.track_map.st.warning",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        "app.components.track_map.st.plotly_chart",
+        lambda fig, **kwargs: captured.append((fig, kwargs)),
+    )
+
+    track_map.plot_pit_wall_track_replay(
+        session=object(),
+        driver_codes=["VER", "HAM"],
+        track="Silverstone",
+        session_label="2024 Qualifying",
+        frame_count=18,
+    )
+
+    assert len(captured) == 1
+    fig, kwargs = captured[0]
+    assert len(fig.frames) == 18
+    assert kwargs["config"]["responsive"] is True
+    assert "pit-wall-replay-Silverstone" in kwargs["key"]
