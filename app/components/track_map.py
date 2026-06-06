@@ -24,6 +24,16 @@ TEXT_COLOR = "#FFFFFF"
 SUBTLE_TEXT = "#B8BEC8"
 OUTLINE_COLOR = "#3A404B"
 START_FINISH_COLOR = "#FFFFFF"
+DRIVER_COLORS = [
+    "#00D2BE",
+    "#FF1E1E",
+    "#A48FFF",
+    "#FFB000",
+    "#5FD7FF",
+    "#FF87C8",
+    "#65E572",
+    "#F2F2F2",
+]
 
 
 def _dark_pastel_speed_cmap():
@@ -106,12 +116,18 @@ def _sanitize_metric_values(values, metric_key: str) -> np.ndarray:
     values[~np.isfinite(values)] = np.nan
 
     lo, hi = TRACK_MAP_METRICS[metric_key]["valid_range"]
-    values = np.clip(values, lo, hi)
+    out_of_range = (values < lo) | (values > hi)
+    values[out_of_range] = np.nan
 
     if np.all(np.isnan(values)):
         raise ValueError("Track-map metric contains no valid values.")
 
-    cleaned = pd.Series(values).interpolate(limit_direction="both").to_numpy()
+    cleaned = (
+        pd.Series(values)
+        .interpolate(limit_direction="both")
+        .clip(lower=lo, upper=hi)
+        .to_numpy()
+    )
     if np.all(np.isnan(cleaned)):
         raise ValueError("Track-map metric interpolation failed.")
 
@@ -154,6 +170,385 @@ def _prepare_track_map_data(tel: pd.DataFrame, metric_key: str) -> dict:
         "segment_index": segment_index,
         "metric_cfg": metric_cfg,
     }
+
+
+def _resample_replay_trace(
+    tel: pd.DataFrame,
+    driver_code: str,
+    *,
+    frame_count: int = 120,
+) -> dict:
+    """Resample one driver's positioned telemetry into animation frames."""
+    required_cols = ["X", "Y"]
+    for col in required_cols:
+        if col not in tel.columns:
+            raise KeyError(col)
+
+    work = tel.copy().replace([np.inf, -np.inf], np.nan).dropna(subset=["X", "Y"])
+    if len(work) < 3:
+        raise ValueError(f"Telemetry too short for {driver_code} replay.")
+
+    if "Distance" in work.columns and work["Distance"].notna().sum() >= 3:
+        progress_source = work["Distance"].astype(float).to_numpy()
+    elif "Time_s" in work.columns and work["Time_s"].notna().sum() >= 3:
+        progress_source = work["Time_s"].astype(float).to_numpy()
+    else:
+        progress_source = np.arange(len(work), dtype=float)
+
+    progress_source = pd.Series(progress_source).interpolate(limit_direction="both").to_numpy()
+    order = np.argsort(progress_source)
+    progress_source = progress_source[order]
+    work = work.iloc[order].copy()
+
+    _, unique_idx = np.unique(progress_source, return_index=True)
+    progress_source = progress_source[unique_idx]
+    work = work.iloc[unique_idx].copy()
+
+    if len(work) < 3 or progress_source[-1] <= progress_source[0]:
+        raise ValueError(f"Invalid replay progress for {driver_code}.")
+
+    progress = (progress_source - progress_source[0]) / (
+        progress_source[-1] - progress_source[0]
+    )
+    replay_progress = np.linspace(0.0, 1.0, max(12, int(frame_count)))
+
+    x = np.interp(replay_progress, progress, work["X"].astype(float).to_numpy())
+    y = np.interp(replay_progress, progress, work["Y"].astype(float).to_numpy())
+
+    if "Speed" in work.columns:
+        speed_values = _sanitize_metric_values(work["Speed"], "speed")
+        speed = np.interp(replay_progress, progress, speed_values)
+    else:
+        speed = np.zeros_like(replay_progress)
+
+    return {
+        "driver": driver_code,
+        "x": x,
+        "y": y,
+        "speed": speed,
+        "progress": replay_progress,
+        "outline_x": work["X"].astype(float).to_numpy(),
+        "outline_y": work["Y"].astype(float).to_numpy(),
+        "samples": len(work),
+    }
+
+
+def _prepare_replay_traces(
+    session: Any,
+    driver_codes: list[str],
+    *,
+    frame_count: int = 120,
+) -> tuple[list[dict], list[str]]:
+    replay_data: list[dict] = []
+    missing: list[str] = []
+
+    for driver_code in driver_codes:
+        tel = load_telemetry_with_position(session, driver_code)
+        if tel is None or tel.empty:
+            missing.append(driver_code)
+            continue
+
+        try:
+            replay_data.append(
+                _resample_replay_trace(
+                    tel,
+                    driver_code,
+                    frame_count=frame_count,
+                )
+            )
+        except Exception as e:
+            logger.warning(
+                "Driver replay trace unavailable",
+                driver=driver_code,
+                error=str(e),
+            )
+            missing.append(driver_code)
+
+    return replay_data, missing
+
+
+def _axis_range(values: np.ndarray, pad_ratio: float = 0.08) -> list[float]:
+    vmin = float(np.nanmin(values))
+    vmax = float(np.nanmax(values))
+    span = max(vmax - vmin, 1.0)
+    pad = span * pad_ratio
+    return [vmin - pad, vmax + pad]
+
+
+def _create_pit_wall_replay_figure(
+    track: str,
+    session_label: str,
+    replay_data: list[dict],
+) -> go.Figure:
+    """Build an animated pit-wall-style track replay figure."""
+    if not replay_data:
+        raise ValueError("No replay data available.")
+
+    base = replay_data[0]
+    all_x = np.concatenate([data["outline_x"] for data in replay_data])
+    all_y = np.concatenate([data["outline_y"] for data in replay_data])
+
+    fig = go.Figure()
+
+    # Track glow + racing line.
+    fig.add_trace(
+        go.Scatter(
+            x=base["outline_x"],
+            y=base["outline_y"],
+            mode="lines",
+            line=dict(color="rgba(125,14,14,0.38)", width=22),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=base["outline_x"],
+            y=base["outline_y"],
+            mode="lines",
+            line=dict(color="#303642", width=10),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=base["outline_x"],
+            y=base["outline_y"],
+            mode="lines",
+            line=dict(color="#D8DDE7", width=2),
+            hovertemplate="<b>Racing line</b><extra></extra>",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[base["outline_x"][0]],
+            y=[base["outline_y"][0]],
+            mode="markers+text",
+            marker=dict(size=11, color="#FFFFFF", line=dict(color="#111111", width=1)),
+            text=["S/F"],
+            textposition="middle right",
+            textfont=dict(size=11, color="#FFFFFF"),
+            hovertemplate="<b>Start / Finish</b><extra></extra>",
+            showlegend=False,
+        )
+    )
+
+    car_trace_start = len(fig.data)
+    for idx, data in enumerate(replay_data):
+        color = DRIVER_COLORS[idx % len(DRIVER_COLORS)]
+        fig.add_trace(
+            go.Scatter(
+                x=[data["x"][0]],
+                y=[data["y"][0]],
+                mode="markers+text",
+                marker=dict(
+                    symbol="triangle-right",
+                    size=18,
+                    color=color,
+                    line=dict(color="#FFFFFF", width=1.6),
+                ),
+                text=[data["driver"]],
+                textposition="top center",
+                textfont=dict(size=11, color=color),
+                name=data["driver"],
+                customdata=[[data["speed"][0], data["progress"][0] * 100]],
+                hovertemplate=(
+                    "<b>%{text}</b><br>"
+                    + "Speed: %{customdata[0]:.1f} km/h<br>"
+                    + "Lap progress: %{customdata[1]:.1f}%"
+                    + "<extra></extra>"
+                ),
+            )
+        )
+
+    frames = []
+    frame_count = len(replay_data[0]["x"])
+    for frame_idx in range(frame_count):
+        frame_traces = []
+        for data in replay_data:
+            frame_traces.append(
+                go.Scatter(
+                    x=[data["x"][frame_idx]],
+                    y=[data["y"][frame_idx]],
+                    text=[data["driver"]],
+                    customdata=[
+                        [
+                            float(data["speed"][frame_idx]),
+                            float(data["progress"][frame_idx] * 100),
+                        ]
+                    ],
+                )
+            )
+
+        frames.append(
+            go.Frame(
+                data=frame_traces,
+                traces=list(range(car_trace_start, car_trace_start + len(replay_data))),
+                name=str(frame_idx),
+            )
+        )
+
+    fig.frames = frames
+
+    driver_status = "  |  ".join(
+        f"<span style='color:{DRIVER_COLORS[idx % len(DRIVER_COLORS)]}'>{data['driver']}</span>"
+        for idx, data in enumerate(replay_data)
+    )
+
+    fig.update_layout(
+        paper_bgcolor="#0F1117",
+        plot_bgcolor="#0F1117",
+        height=720,
+        margin=dict(l=20, r=20, t=96, b=84),
+        font=dict(color="#FFFFFF", family="Inter, sans-serif"),
+        title=dict(
+            text=(
+                f"<b>{track} Live Track Map</b>"
+                f"<br><span style='font-size:12px;color:#AEB4BE'>{session_label} "
+                "- fastest-lap telemetry replay</span>"
+                f"<br><span style='font-size:11px;color:#D8DDE7'>{driver_status}</span>"
+            ),
+            x=0.5,
+            xanchor="center",
+        ),
+        showlegend=False,
+        hovermode="closest",
+        hoverlabel=dict(bgcolor="#161A22", bordercolor="#7D0E0E", font_size=12),
+        updatemenus=[
+            {
+                "type": "buttons",
+                "direction": "left",
+                "x": 0.5,
+                "xanchor": "center",
+                "y": -0.04,
+                "yanchor": "top",
+                "bgcolor": "#141820",
+                "bordercolor": "#7D0E0E",
+                "font": {"color": "#FFFFFF"},
+                "buttons": [
+                    {
+                        "label": "PLAY",
+                        "method": "animate",
+                        "args": [
+                            None,
+                            {
+                                "frame": {"duration": 70, "redraw": False},
+                                "fromcurrent": True,
+                                "transition": {"duration": 0},
+                            },
+                        ],
+                    },
+                    {
+                        "label": "PAUSE",
+                        "method": "animate",
+                        "args": [
+                            [None],
+                            {
+                                "frame": {"duration": 0, "redraw": False},
+                                "mode": "immediate",
+                                "transition": {"duration": 0},
+                            },
+                        ],
+                    },
+                ],
+            }
+        ],
+        sliders=[
+            {
+                "active": 0,
+                "x": 0.08,
+                "len": 0.84,
+                "y": -0.12,
+                "pad": {"t": 20, "b": 0},
+                "bgcolor": "#141820",
+                "bordercolor": "#303642",
+                "currentvalue": {
+                    "prefix": "Replay frame ",
+                    "font": {"color": "#FFFFFF", "size": 12},
+                },
+                "steps": [
+                    {
+                        "args": [
+                            [str(frame_idx)],
+                            {
+                                "frame": {"duration": 0, "redraw": False},
+                                "mode": "immediate",
+                                "transition": {"duration": 0},
+                            },
+                        ],
+                        "label": str(frame_idx),
+                        "method": "animate",
+                    }
+                    for frame_idx in range(frame_count)
+                ],
+            }
+        ],
+    )
+
+    fig.update_xaxes(
+        visible=False,
+        showgrid=False,
+        zeroline=False,
+        range=_axis_range(all_x),
+    )
+    fig.update_yaxes(
+        visible=False,
+        showgrid=False,
+        zeroline=False,
+        scaleanchor="x",
+        scaleratio=1,
+        range=_axis_range(all_y),
+    )
+
+    return fig
+
+
+def plot_pit_wall_track_replay(
+    session: Any,
+    driver_codes: list[str],
+    track: str,
+    session_label: str,
+    *,
+    frame_count: int = 120,
+) -> None:
+    """Render an animated multi-car track replay from positioned telemetry."""
+    clean_drivers = [str(code).strip().upper() for code in driver_codes if str(code).strip()]
+    clean_drivers = list(dict.fromkeys(clean_drivers))
+
+    if not clean_drivers:
+        st.info("Select at least one driver to render the live track map.")
+        return
+
+    replay_data, missing = _prepare_replay_traces(
+        session,
+        clean_drivers,
+        frame_count=frame_count,
+    )
+
+    if missing:
+        st.warning(
+            "Position telemetry unavailable for: "
+            + ", ".join(missing)
+            + ". They were omitted from the replay."
+        )
+
+    if not replay_data:
+        st.error("No driver has usable position telemetry for this replay.")
+        return
+
+    fig = _create_pit_wall_replay_figure(track, session_label, replay_data)
+    st.plotly_chart(
+        fig,
+        width="stretch",
+        key=f"pit-wall-replay-{track}-{session_label}-{'-'.join(clean_drivers)}",
+        config={
+            "displayModeBar": False,
+            "responsive": True,
+            "scrollZoom": False,
+        },
+    )
 
 
 def _compute_shared_scale(
@@ -348,7 +743,9 @@ def _render_track_map_figure(
         return
 
     columns = st.columns(len(panels), gap="medium")
-    for idx, ((driver_code, prepared), column) in enumerate(zip(panels, columns)):
+    for idx, ((driver_code, prepared), column) in enumerate(
+        zip(panels, columns, strict=False)
+    ):
         fig = _create_track_map_figure(
             track,
             driver_code,
