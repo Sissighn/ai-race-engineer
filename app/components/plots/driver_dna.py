@@ -1,9 +1,9 @@
 """
-Driver DNA Comparison Chart (Section 7).
+Driver DNA telemetry-derived heuristic score chart (Section 7).
 
 Exposes one public function:
     plot_driver_dna – grouped horizontal bar chart of telemetry-derived
-                      driving style scores on a normalised 0-100 scale.
+                      heuristic driving-style scores on a normalised 0-100 scale.
 
 DNA_METRIC_META and DNA_METRIC_ORDER define the canonical metric labels,
 descriptions, and display ordering used in the chart.
@@ -56,7 +56,7 @@ DNA_METRIC_ORDER = [
 
 
 def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
-    """Render telemetry-derived driver style scores as a grouped horizontal bar chart.
+    """Render telemetry-derived heuristic scores as a grouped horizontal bar chart.
 
     Scores are normalised heuristics on a 0-100 scale and should be read as
     relative style indicators, not absolute performance ratings.
@@ -95,7 +95,7 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
     plot_df["MetricDescription"] = plot_df["Metric"].apply(
         lambda m: DNA_METRIC_META.get(m, {}).get(
             "description",
-            "Telemetry-derived normalized style score.",
+            "Telemetry-derived normalized heuristic score.",
         )
     )
 
@@ -128,15 +128,18 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
         custom_data=["Metric", "MetricDescription"],
         category_orders={"MetricLabel": ordered_labels, "Driver": [driver_a, driver_b]},
         color_discrete_map={driver_a: "#A48FFF", driver_b: "#FFB7D5"},
-        labels={"Score": "Derived Driver Style Score [0-100]", "MetricLabel": "Metric"},
+        labels={
+            "Score": "Telemetry-Derived Heuristic Score [0-100]",
+            "MetricLabel": "Metric",
+        },
         title=(
-            "Driver Style Profile Comparison"
+            "Driver Style Heuristic Score Comparison"
             f"{TITLE_LINE_SPACER}<sup><span style='color:#AEB4BE;font-weight:400'>"
             f"{driver_a} vs {driver_b}  -  "
-            "Telemetry-derived normalized heuristic scores (0-100)</span></sup>"
+            "Telemetry-derived heuristic scores (0-100)</span></sup>"
             f"{TITLE_LINE_SPACER}<sup><span style='color:#AEB4BE;font-weight:400'>"
             "Higher score = stronger expression of that style characteristic, "
-            "not universally faster performance</span></sup>"
+            "not an objective performance rating</span></sup>"
         ),
         height=480,
     )
@@ -162,7 +165,7 @@ def plot_driver_dna(dna_df, driver_a, driver_b, key="driver_dna_radar"):
         hovertemplate=(
             "<b>%{customdata[0]}</b><br>"
             + "Driver: %{fullData.name}<br>"
-            + "Score: %{x:.1f}/100<br>"
+            + "Telemetry-derived heuristic score: %{x:.1f}/100<br>"
             + "Meaning: %{customdata[1]}"
             + "<extra></extra>"
         ),
