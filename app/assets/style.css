@@ -55,10 +55,77 @@ h6,
 }
 
 /* ------------------------------------
+   HOME PAGE LAYOUT
+------------------------------------ */
+.latest-gp-section {
+  width: 100%;
+}
+
+.latest-gp-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  gap: clamp(24px, 4vw, 56px);
+  align-items: start;
+  width: 100%;
+}
+
+.latest-gp-column {
+  min-width: 0;
+}
+
+.latest-gp-heading {
+  margin: 0 0 22px 0 !important;
+  min-height: 48px;
+  display: flex;
+  align-items: flex-end;
+  line-height: 1.1 !important;
+}
+
+.latest-gp-card-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.latest-gp-card-stack--single {
+  grid-template-rows: 1fr;
+}
+
+.latest-gp-card-stack .glow-card-wrapper {
+  margin-bottom: 0 !important;
+  min-height: 96px;
+}
+
+.latest-gp-card-stack .glow-card-content {
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-wrap: anywhere;
+}
+
+.event-results-title {
+  margin-top: clamp(38px, 5vw, 64px) !important;
+  text-align: center;
+}
+
+.event-results-current {
+  margin: 0 !important;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.12 !important;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------
    BUTTONS (Der Fix für die rote Farbe)
 ------------------------------------ */
 /* Normaler Zustand */
 .stButton > button {
+  min-width: 56px !important;
+  min-height: 52px !important;
   background-color: #7d0e0e !important;
   color: #ffffff !important;
   border: none !important;
@@ -88,6 +155,40 @@ h6,
   color: #ffffff !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+@media (max-width: 900px) {
+  .latest-gp-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .latest-gp-heading {
+    min-height: 0;
+    margin-bottom: 16px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .section-title {
+    font-size: 1.35rem;
+  }
+
+  .latest-gp-card-stack .glow-card-wrapper,
+  .latest-gp-card-stack .glow-card-content {
+    min-height: 88px;
+  }
+
+  .event-results-current {
+    min-height: 48px;
+    font-size: 1.15rem !important;
+  }
+
+  .stButton > button {
+    min-width: 48px !important;
+    min-height: 46px !important;
+    padding: 8px 16px !important;
+  }
 }
 
 /* ------------------------------------
