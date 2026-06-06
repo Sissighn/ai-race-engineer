@@ -131,7 +131,7 @@ def _render_overview_tab(
     Displays:
     - Total time delta between drivers
     - Key performance metrics (track status, session type)
-    - Driver DNA radar chart comparing driving styles
+    - Driver DNA telemetry-derived heuristic score chart comparing driving styles
     - Performance breakdown by corner type
     - Apex speed share and exit speed deltas
     """
@@ -149,13 +149,19 @@ def _render_overview_tab(
         GlowCard.render("Session", session_type)
 
     # Driver Style Analysis section
-    st.markdown("<h3>Driver Style Analysis (DNA)</h3>", unsafe_allow_html=True)
+    st.markdown(
+        "<h3>Driver Style Analysis (Telemetry-Derived Heuristic Scores)</h3>",
+        unsafe_allow_html=True,
+    )
     try:
         # Generate driver DNA comparison dataframe
         dna_df = get_driver_dna_comparison_df(tel_a, tel_b, driver_a, driver_b)
 
         if dna_df is None or dna_df.empty:
-            st.warning("Driver DNA is unavailable for the selected drivers/session.")
+            st.warning(
+                "Driver style heuristic scores are unavailable for the selected "
+                "drivers/session."
+            )
         else:
             # Display DNA radar chart and time loss breakdown side-by-side
             col_dna, col_loss = st.columns([1, 1])
