@@ -1,5 +1,8 @@
 """
-Driver DNA analysis domain logic.
+Driver DNA telemetry-derived heuristic score domain logic.
+
+The returned 0-100 values are normalized driving-style indicators, not
+objective performance ratings.
 """
 
 from typing import Optional
@@ -15,6 +18,12 @@ logger = get_logger(__name__)
 
 
 def calculate_driver_dna(telemetry: Optional[pd.DataFrame]) -> dict[str, float]:
+    """Calculate telemetry-derived heuristic driving-style scores.
+
+    The thresholds below are hand-tuned normalization ranges for FastF1
+    telemetry channels. They make different dimensions comparable on a 0-100
+    scale, but they are not calibrated proof of absolute driver performance.
+    """
     log_context = {"samples": len(telemetry) if telemetry is not None else 0}
 
     if telemetry is None or telemetry.empty:
