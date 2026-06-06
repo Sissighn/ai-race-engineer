@@ -146,12 +146,12 @@ def test_plot_driver_dna_uses_grouped_horizontal_bar_with_transparency(monkeypat
 
     assert kwargs["key"] == "driver_dna_radar"
     assert all(trace.type == "bar" for trace in fig.data)
-    assert fig.layout.xaxis.title.text == "Derived Driver Style Score [0-100]"
+    assert fig.layout.xaxis.title.text == "Telemetry-Derived Heuristic Score [0-100]"
     assert fig.layout.xaxis.range == (0, 100)
 
     title_text = fig.layout.title.text
-    assert "Driver Style Profile Comparison" in title_text
-    assert "Telemetry-derived normalized heuristic scores" in title_text
+    assert "Driver Style Heuristic Score Comparison" in title_text
+    assert "Telemetry-derived heuristic scores" in title_text
     assert "HAM vs VER" in title_text
 
     hover = fig.data[0].hovertemplate
