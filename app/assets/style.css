@@ -120,6 +120,226 @@ h6,
 }
 
 /* ------------------------------------
+   PIT WALL TRACK MAP
+------------------------------------ */
+.pit-wall-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  padding: clamp(20px, 3vw, 34px);
+  margin: 0 0 28px 0;
+  border: 1px solid rgba(125, 14, 14, 0.8);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(125, 14, 14, 0.22), transparent 38%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.035) 0,
+      rgba(255, 255, 255, 0.035) 1px,
+      transparent 1px,
+      transparent 72px
+    ),
+    #101217;
+  box-shadow: 0 0 32px rgba(125, 14, 14, 0.18);
+}
+
+.pit-wall-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: #ff4b4b;
+  font-family: "Tektur", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.pit-wall-hero h1 {
+  margin: 0 0 8px 0 !important;
+  font-size: clamp(2rem, 5vw, 4.4rem) !important;
+  line-height: 0.95 !important;
+}
+
+.pit-wall-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: #c8cdd6;
+  font-size: 1rem;
+}
+
+.pit-wall-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: max-content;
+  color: #d8dde7;
+  font-family: "Tektur", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.pit-wall-status span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #30ff8a;
+  box-shadow: 0 0 14px rgba(48, 255, 138, 0.85);
+}
+
+.pit-wall-note {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-left: 3px solid #7d0e0e;
+  background: #111319;
+  color: #c8cdd6;
+  border-radius: 6px;
+}
+
+/* ------------------------------------
+   LIVE TIMING
+------------------------------------ */
+.live-timing-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: stretch;
+  padding: clamp(20px, 3vw, 34px);
+  margin: 0 0 28px 0;
+  border: 1px solid rgba(216, 221, 231, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(125, 14, 14, 0.26), transparent 42%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent),
+    #0f1117;
+}
+
+.live-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: #ff4b4b;
+  font-family: "Tektur", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.live-timing-hero h1 {
+  margin: 0 0 8px 0 !important;
+  font-size: clamp(2rem, 5vw, 4.2rem) !important;
+  line-height: 0.95 !important;
+}
+
+.live-timing-hero p {
+  max-width: 820px;
+  margin: 0;
+  color: #c8cdd6;
+}
+
+.live-session-card {
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(216, 221, 231, 0.14);
+  border-radius: 8px;
+  background: #12161f;
+}
+
+.live-session-card strong {
+  font-family: "Tektur", sans-serif;
+  font-size: 1.4rem;
+}
+
+.live-session-card small {
+  color: #aeb4be;
+}
+
+.live-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Tektur", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.live-status span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.live-status.live span {
+  background: #30ff8a;
+  box-shadow: 0 0 14px rgba(48, 255, 138, 0.85);
+}
+
+.live-status.standby span {
+  background: #ffb000;
+  box-shadow: 0 0 14px rgba(255, 176, 0, 0.65);
+}
+
+.live-metric-card {
+  min-height: 104px;
+  padding: 16px;
+  border: 1px solid rgba(216, 221, 231, 0.12);
+  border-radius: 8px;
+  background: #111319;
+}
+
+.live-metric-card span,
+.live-metric-card small {
+  display: block;
+  color: #aeb4be;
+  font-family: "Tektur", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.live-metric-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #ffffff;
+  font-family: "Tektur", sans-serif;
+  font-size: clamp(1.45rem, 3vw, 2.4rem);
+  line-height: 1;
+}
+
+.race-control-row {
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  border-left: 3px solid #7d0e0e;
+  border-radius: 6px;
+  background: #111319;
+}
+
+.race-control-row span {
+  color: #aeb4be;
+  font-size: 0.78rem;
+}
+
+.race-control-row strong {
+  display: block;
+  margin: 4px 0;
+  color: #ffffff;
+  font-family: "Tektur", sans-serif;
+}
+
+.race-control-row p {
+  margin: 0;
+  color: #d8dde7;
+}
+
+/* ------------------------------------
    BUTTONS (Der Fix für die rote Farbe)
 ------------------------------------ */
 /* Normaler Zustand */
@@ -166,6 +386,19 @@ h6,
   .latest-gp-heading {
     min-height: 0;
     margin-bottom: 16px !important;
+  }
+
+  .pit-wall-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .live-timing-hero {
+    flex-direction: column;
+  }
+
+  .live-session-card {
+    min-width: 0;
   }
 }
 
