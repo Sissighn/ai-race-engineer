@@ -1,10 +1,16 @@
 # ---- Python ----
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 *.so
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # ---- OS / System ----
 .DS_Store
@@ -16,8 +22,10 @@ Thumbs.db
 
 # ---- FastF1 Cache ----
 cache/
+data/raw/
 
 # ---- Logs ----
+logs/
 *.log
 
 # ---- Environment / Secrets ----
