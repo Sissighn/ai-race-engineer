@@ -27,26 +27,31 @@ def render_results_tables(season_year: int, started_events: list) -> None:
     display_event_key = current_display_event["OfficialEventName"]
 
     st.markdown(
-        "<h2 class='section-title' style='text-align: center;'>Current Event Results</h2>",
+        "<h2 class='section-title event-results-title'>Current Event Results</h2>",
         unsafe_allow_html=True,
     )
 
-    col_nav1, col_nav2, col_nav3 = st.columns([4, 12, 4])
+    col_spacer_left, col_nav_prev, col_nav_title, col_nav_next, col_spacer_right = (
+        st.columns([1.5, 1, 6, 1, 1.5], gap="small")
+    )
 
-    with col_nav1:
+    with col_spacer_left:
+        st.empty()
+
+    with col_nav_prev:
         if st.button(
             "←", key="prev_event", disabled=(st.session_state.event_index <= 0)
         ):
             st.session_state.event_index -= 1
             st.rerun()
 
-    with col_nav2:
+    with col_nav_title:
         st.markdown(
-            f"<h3 style='text-align: center;'>‹ {display_event_name} Results ›</h3>",
+            f"<h3 class='event-results-current'>‹ {display_event_name} Results ›</h3>",
             unsafe_allow_html=True,
         )
 
-    with col_nav3:
+    with col_nav_next:
         if st.button(
             "→",
             key="next_event",
@@ -54,6 +59,9 @@ def render_results_tables(season_year: int, started_events: list) -> None:
         ):
             st.session_state.event_index += 1
             st.rerun()
+
+    with col_spacer_right:
+        st.empty()
 
     display_results = load_event_results(season_year, display_event_key)
     logger.debug(
