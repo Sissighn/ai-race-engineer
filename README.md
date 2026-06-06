@@ -1,7 +1,7 @@
 # AI Race Engineer
 
 [![CI](https://github.com/Sissighn/ai-race-engineer/actions/workflows/ci.yml/badge.svg)](https://github.com/Sissighn/ai-race-engineer/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Python](https://img.shields.io/badge/Python-3.11%20%7C%203.12-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.31%2B-red)
 ![FastF1](https://img.shields.io/badge/Data-FastF1-orange)
 ![Pydantic](https://img.shields.io/badge/Validation-Pydantic-1f6feb)
@@ -55,7 +55,7 @@ This repository now includes:
 
 ## Tech Stack
 
-- **Language:** Python 3.11+
+- **Language:** Python 3.11 or 3.12
 - **App Framework:** Streamlit
 - **Data Source:** FastF1
 - **Data/Math:** Pandas, NumPy, SciPy
@@ -132,27 +132,35 @@ cd ai-race-engineer
 
 ### 2) Create and activate virtual environment
 
+Use Python 3.11 or 3.12. The repository includes `.python-version` for tools
+such as `pyenv`; CI tests both supported versions.
+
 ```bash
-python -m venv venv
+python3.11 -m venv venv
 # macOS/Linux
 source venv/bin/activate
 # Windows (PowerShell)
 venv\Scripts\Activate.ps1
 ```
 
-### 3) Install dependencies
+### 3) Install dependencies for development
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements-dev.txt
+```
+
+For runtime-only installs, use:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4) Install project in editable mode (recommended)
+`pyproject.toml` is the dependency source of truth. `requirements.txt` and
+`requirements-dev.txt` are thin compatibility entry points for pip-based
+environments.
 
-```bash
-pip install -e .
-```
-
-### 5) Run the app
+### 4) Run the app
 
 ```bash
 streamlit run app/main.py
