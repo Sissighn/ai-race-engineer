@@ -184,6 +184,36 @@ data-driven calibration:
 - add a validation notebook or automated benchmark dataset
 - fail gracefully when validation preconditions are not met
 
+## Driver-DNA Heuristic Scores
+
+The Driver-DNA view reports telemetry-derived heuristic scores on a normalized
+0-100 scale. These values describe how strongly a telemetry pattern appears in
+the selected lap or session data. They are not objective driver ratings and
+should not be interpreted as proof that one driver is universally better than
+another.
+
+Current score dimensions:
+
+- `Aggressiveness`: derived from high deceleration events in braking zones.
+- `Cornering`: derived from average speed in detected cornering phases.
+- `Smoothness`: derived from throttle input stability during transitions.
+- `FullThrottle`: derived from the share of samples at near-full throttle.
+- `GearWorkload`: derived from total gear-change activity over the lap.
+
+The normalization thresholds are hand-tuned ranges:
+
+```text
+Aggressiveness: 95th-percentile deceleration, 50 to 200 km/h/s -> 0 to 100
+Cornering:      average cornering-phase speed, 80 to 230 km/h -> 0 to 100
+Smoothness:     throttle delta mean, 0.5 to 8.0 -> 100 to 20
+FullThrottle:   near-full-throttle sample share, 40% to 85% -> 0 to 100
+GearWorkload:   gear-change activity, 30 to 90 shifts -> 0 to 100
+```
+
+These ranges are intended to make style dimensions comparable in the UI. They
+should be validated against a larger telemetry sample before being used as
+stable driver-characterization metrics.
+
 ## Interpretation Rule
 
 Use the current `TimeLoss` output to answer:
