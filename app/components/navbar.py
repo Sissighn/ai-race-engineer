@@ -1,7 +1,9 @@
-import streamlit as st
 import base64
 import os
 
+import streamlit as st
+
+from app.utils.ui import get_assets_dir
 from src.logging import get_logger
 
 logger = get_logger(__name__)
@@ -9,11 +11,7 @@ logger = get_logger(__name__)
 
 class Navbar:
     def __init__(self):
-        # Resolve absolute paths relative to this file to avoid working-directory issues
-        self.script_path = os.path.dirname(os.path.abspath(__file__))
-        self.assets_path = os.path.normpath(
-            os.path.join(self.script_path, "..", "assets")
-        )
+        self.assets_path = str(get_assets_dir())
 
     def _load_asset(self, filename):
         path = os.path.join(self.assets_path, filename)
