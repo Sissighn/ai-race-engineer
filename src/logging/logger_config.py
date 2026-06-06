@@ -20,12 +20,14 @@ _LOGGING_INITIALIZED = False
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-LOGS_DIR = PROJECT_ROOT / "logs"
+PROJECT_ROOT = Path(
+    os.getenv("AI_RACE_ENGINEER_ROOT", Path(__file__).parent.parent.parent)
+).resolve()
+LOGS_DIR = Path(os.getenv("AI_RACE_ENGINEER_LOGS_DIR", PROJECT_ROOT / "logs"))
 
 # Environment-based log level
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-IS_PRODUCTION = os.getenv("ENVIRONMENT", "dev").lower() == "prod"
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "dev").lower() in {"prod", "production"}
 IS_STREAMLIT = "streamlit" in sys.modules
 
 # Log files
@@ -81,7 +83,7 @@ def setup_logging(level: str = LOG_LEVEL) -> None:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
 
-    LOGS_DIR.mkdir(exist_ok=True)
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     # Convert to logging level
     log_level = getattr(logging, level, logging.INFO)
