@@ -1,0 +1,13 @@
+# Runtime dependencies for Docker.
+# Keep in sync with [project].dependencies in pyproject.toml.
+fastf1>=3.3.0
+numpy>=1.24.0
+pandas>=2.1.0
+scipy>=1.11.0
+matplotlib>=3.8.0
+plotly>=5.17.0
+streamlit>=1.31.0
+tqdm>=4.66.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+structlog>=23.1.0
