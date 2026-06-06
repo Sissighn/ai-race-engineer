@@ -35,6 +35,9 @@ This repository now includes:
 - Delta lap comparison between two drivers
 - Speed, throttle, brake, gear, and track map visualizations
 
+The assumptions and validation approach behind the time-loss model are
+documented in [docs/methodology.md](docs/methodology.md).
+
 ![Driver Comparison](./docs/1.png)
 ![Driver Comparison](./docs/2.png)
 ![Driver Comparison](./docs/3.png)
