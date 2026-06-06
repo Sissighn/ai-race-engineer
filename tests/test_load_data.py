@@ -232,6 +232,35 @@ def test_load_telemetry_with_position_success_fills_columns():
     assert "Distance" in out.columns
     assert "Speed" in out.columns
     assert out["Distance"].isna().sum() == 0
+    assert out["Speed"].isna().sum() == 0
+    assert out["Speed"].max() <= load_data.settings.MAX_REALISTIC_SPEED
+
+
+def test_load_telemetry_with_position_interpolates_impossible_speed_spikes():
+    telemetry = pd.DataFrame(
+        {
+            "Time": pd.to_timedelta([0.0, 0.1, 0.2, 0.3], unit="s"),
+            "X": [0.0, 10.0, 20.0, 30.0],
+            "Y": [0.0, 5.0, 0.0, -5.0],
+        }
+    )
+    car_df = pd.DataFrame(
+        {
+            "Time": pd.to_timedelta([0.0, 0.1, 0.2, 0.3], unit="s"),
+            "Speed": [120.0, 1700.0, 220.0, 240.0],
+        }
+    )
+
+    fastest = _FakeFastestLap(tel=car_df, telemetry=telemetry)
+    sess = _FakeSession(
+        pd.Timestamp("2025-01-01", tz="UTC"),
+        laps=_FakeLaps(empty=False, fastest=fastest),
+    )
+
+    out = RAW_LOAD_TELEMETRY_WITH_POSITION(sess, "VER")
+
+    assert out["Speed"].max() <= load_data.settings.MAX_REALISTIC_SPEED
+    assert out["Speed"].iloc[1] == pytest.approx(170.0)
 
 
 def test_load_telemetry_with_position_falls_back_to_telemetry_if_pos_data_fails():
