@@ -1,0 +1,45 @@
+# Git and local metadata
+.git/
+.gitignore
+.DS_Store
+**/.DS_Store
+
+# Python artifacts
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Test and development artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+notebooks/
+.ipynb_checkpoints/
+tests/
+
+# Runtime data generated locally
+cache/
+logs/
+data/raw/
+
+# Local configuration and IDE files
+.env
+.streamlit/
+.vscode/
+
+# Build output
+build/
+dist/
+
+# Docker files are not needed inside the runtime image
+Dockerfile
+docker-compose.yml
+requirements-dev.txt
