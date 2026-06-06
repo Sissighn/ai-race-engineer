@@ -20,6 +20,21 @@ from src.infrastructure.fastf1 import get_session
 
 logger = get_logger(__name__)
 
+
+def _clean_realistic_speed(series: pd.Series) -> pd.Series:
+    """Return speed values with impossible spikes removed and interpolated."""
+    speed = pd.to_numeric(series, errors="coerce")
+    valid = speed.between(
+        settings.MIN_REALISTIC_SPEED,
+        settings.MAX_REALISTIC_SPEED,
+        inclusive="both",
+    )
+    speed = speed.where(valid)
+    return speed.interpolate(limit_direction="both").clip(
+        lower=settings.MIN_REALISTIC_SPEED,
+        upper=settings.MAX_REALISTIC_SPEED,
+    )
+
 # ---------------------------------------------------------
 # CONFIG & CACHE SETUP
 # ---------------------------------------------------------
@@ -388,18 +403,11 @@ def load_telemetry_with_position(
             tolerance=0.03,
         )
 
-        # Fix Speed Gaps
-        if "Speed" in merged.columns and merged["Speed"].isna().sum() > 0:
-            dx = np.diff(merged["X"])
-            dy = np.diff(merged["Y"])
-            dist_xy = np.sqrt(dx**2 + dy**2)
-            dt = np.diff(merged["Time_s"])
-            dt = np.where(dt == 0, np.nan, dt)
-            speed_calc = np.zeros(len(merged))
-            speed_calc[1:] = (dist_xy / dt) * 3.6
-            merged["Speed"] = merged["Speed"].fillna(
-                pd.Series(speed_calc, index=merged.index)
-            )
+        # Fix speed gaps and spikes from car telemetry. Do not derive speed from
+        # X/Y position coordinates: FastF1 position units are not guaranteed to
+        # be metres, which can create impossible values such as 1700 km/h.
+        if "Speed" in merged.columns:
+            merged["Speed"] = _clean_realistic_speed(merged["Speed"])
 
         # Fix Distance
         if "Distance" not in merged.columns or merged["Distance"].isna().sum() > 0:
