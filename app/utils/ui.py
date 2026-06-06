@@ -8,6 +8,37 @@ from src.logging import get_logger
 logger = get_logger(__name__)
 
 
+def apply_dark_page_shell() -> None:
+    """Inject critical dark shell CSS before the full stylesheet is loaded."""
+    st.markdown(
+        """
+        <style>
+        html,
+        body,
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stAppViewContainer"] > .main,
+        [data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        [data-testid="stDecoration"] {
+          background: #191919 !important;
+          color: #ffffff !important;
+        }
+
+        [data-testid="stSidebar"] {
+          display: none !important;
+        }
+
+        header[data-testid="stHeader"] {
+          visibility: hidden !important;
+          height: 0 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def get_assets_dir() -> Path:
     """Return the app assets directory for local and container runtimes."""
     return Path(
