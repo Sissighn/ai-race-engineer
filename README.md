@@ -45,7 +45,9 @@ documented in [docs/methodology.md](docs/methodology.md).
 ### Coaching & Reporting
 
 - Rule-based driving coaching suggestions
-- Driver DNA profiling (aggressiveness, smoothness, etc.)
+- Driver DNA telemetry-derived heuristic scores for driving-style indicators
+  such as braking aggressiveness, corner-speed profile, throttle smoothness,
+  full-throttle usage, and gear-shift activity
 - Executive race engineer summary report
 
 ### Session Management
