@@ -139,20 +139,22 @@ class GlowCard:
             value: Card body text.
         """
         GlowCard._inject_code()
-        safe_title = html.escape(str(title))
-        safe_value = html.escape(str(value))
 
         try:
-            st.markdown(
-                f"""
-        <div class="glow-card-wrapper">
-            <div class="glow-card-content">
-                <div class="gc-title">{safe_title}</div>
-                <div class="gc-value">{safe_value}</div>
-            </div>
-        </div>
-        """,
-                unsafe_allow_html=True,
-            )
+            st.markdown(GlowCard.to_html(title, value), unsafe_allow_html=True)
         except Exception as e:
             logger.error("Failed to render GlowCard", title=str(title), error=str(e))
+
+    @staticmethod
+    def to_html(title: str, value: str) -> str:
+        """Return GlowCard HTML for composed layouts."""
+        safe_title = html.escape(str(title))
+        safe_value = html.escape(str(value))
+        return (
+            '<div class="glow-card-wrapper">'
+            '<div class="glow-card-content">'
+            f'<div class="gc-title">{safe_title}</div>'
+            f'<div class="gc-value">{safe_value}</div>'
+            "</div>"
+            "</div>"
+        )
