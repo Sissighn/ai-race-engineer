@@ -166,6 +166,23 @@ environments.
 streamlit run app/main.py
 ```
 
+### Docker
+
+Build and run the production-style Streamlit container:
+
+```bash
+docker build -t ai-race-engineer .
+docker run --rm -p 8501:8501 ai-race-engineer
+```
+
+Then open `http://localhost:8501`.
+
+For repeated local runs with a persistent FastF1 cache:
+
+```bash
+docker compose up --build
+```
+
 ---
 
 ## Testing
