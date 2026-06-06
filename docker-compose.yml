@@ -1,4 +1,21 @@
 services:
+  f1-live-timing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-race-engineer:latest
+    command: ["python", "-m", "src.services.live_timing_signalr.server"]
+    ports:
+      - "8765:8765"
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      PYTHONPATH: /app
+      F1_SIGNALR_SERVICE_HOST: 0.0.0.0
+      F1_SIGNALR_SERVICE_PORT: "8765"
+      F1_SIGNALR_NO_AUTH: "false"
+      F1_SIGNALR_RECONNECT_DELAY: "5"
+
   ai-race-engineer:
     build:
       context: .
@@ -16,9 +33,13 @@ services:
       AI_RACE_ENGINEER_ASSETS_DIR: /app/app/assets
       FASTF1_CACHE_ENABLED: "true"
       STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+      LIVE_TIMING_SIGNALR_URL: http://f1-live-timing:8765
+      LIVE_TIMING_SIGNALR_TIMEOUT: "2"
     volumes:
       - fastf1-cache:/app/cache
       - app-logs:/app/logs
+    depends_on:
+      - f1-live-timing
 
 volumes:
   fastf1-cache:
