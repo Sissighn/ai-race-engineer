@@ -9,6 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     AI_RACE_ENGINEER_DATA_DIR=/app/data \
     AI_RACE_ENGINEER_LOGS_DIR=/app/logs \
     AI_RACE_ENGINEER_ASSETS_DIR=/app/app/assets \
+    HOME=/app \
+    XDG_CACHE_HOME=/app/cache/xdg \
+    XDG_DATA_HOME=/app/data/xdg \
     ENVIRONMENT=production \
     LOG_LEVEL=INFO \
     FASTF1_CACHE_ENABLED=true \
@@ -29,7 +32,7 @@ RUN python -m pip install --upgrade pip \
 COPY app ./app
 COPY src ./src
 
-RUN mkdir -p cache data logs \
+RUN mkdir -p cache data logs cache/xdg data/xdg \
     && chown -R app:app /app
 
 USER app
