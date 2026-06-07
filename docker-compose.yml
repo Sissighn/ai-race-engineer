@@ -11,6 +11,9 @@ services:
       ENVIRONMENT: production
       LOG_LEVEL: INFO
       PYTHONPATH: /app
+      HOME: /app
+      XDG_CACHE_HOME: /app/cache/xdg
+      XDG_DATA_HOME: /app/data/xdg
       F1_SIGNALR_SERVICE_HOST: 0.0.0.0
       F1_SIGNALR_SERVICE_PORT: "8765"
       F1_SIGNALR_NO_AUTH: "false"
@@ -31,9 +34,13 @@ services:
       AI_RACE_ENGINEER_DATA_DIR: /app/data
       AI_RACE_ENGINEER_LOGS_DIR: /app/logs
       AI_RACE_ENGINEER_ASSETS_DIR: /app/app/assets
+      HOME: /app
+      XDG_CACHE_HOME: /app/cache/xdg
+      XDG_DATA_HOME: /app/data/xdg
       FASTF1_CACHE_ENABLED: "true"
       STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
       LIVE_TIMING_SIGNALR_URL: http://f1-live-timing:8765
+      LIVE_TIMING_BROWSER_SIGNALR_URL: http://localhost:8765
       LIVE_TIMING_SIGNALR_TIMEOUT: "2"
     volumes:
       - fastf1-cache:/app/cache
