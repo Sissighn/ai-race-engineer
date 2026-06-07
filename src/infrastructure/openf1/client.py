@@ -1,5 +1,7 @@
 import json
 import os
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -12,10 +14,22 @@ logger = get_logger(__name__)
 
 OPENF1_BASE_URL = os.getenv("OPENF1_BASE_URL", "https://api.openf1.org/v1")
 OPENF1_TIMEOUT = float(os.getenv("OPENF1_TIMEOUT", "10"))
+OPENF1_MIN_REQUEST_INTERVAL = float(os.getenv("OPENF1_MIN_REQUEST_INTERVAL", "0.4"))
+_REQUEST_LOCK = threading.Lock()
+_LAST_REQUEST_AT = 0.0
 
 
 class OpenF1Error(RuntimeError):
     """Raised when the OpenF1 API cannot provide a usable response."""
+
+
+def _wait_for_rate_limit() -> None:
+    global _LAST_REQUEST_AT
+    with _REQUEST_LOCK:
+        elapsed = time.monotonic() - _LAST_REQUEST_AT
+        if elapsed < OPENF1_MIN_REQUEST_INTERVAL:
+            time.sleep(OPENF1_MIN_REQUEST_INTERVAL - elapsed)
+        _LAST_REQUEST_AT = time.monotonic()
 
 
 def _fetch_json(endpoint: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -26,6 +40,7 @@ def _fetch_json(endpoint: str, params: dict[str, Any] | None = None) -> list[dic
 
     request = Request(url, headers={"User-Agent": "ai-race-engineer/0.1"})
     try:
+        _wait_for_rate_limit()
         with urlopen(request, timeout=OPENF1_TIMEOUT) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except HTTPError as e:
