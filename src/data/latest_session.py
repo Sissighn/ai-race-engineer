@@ -225,6 +225,7 @@ def load_single_session_results(
                 "TeamName",
                 "Time",
                 "Status",
+                "Points",
             ]
             if c in cols_available
         ]
