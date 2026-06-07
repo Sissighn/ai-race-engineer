@@ -6,6 +6,7 @@ from .comparison_service import (
     compare_session_drivers,
     get_tracks_for_year_for_ui,
 )
+from .championship_service import calculate_championship_standings
 from .home_service import (
     get_home_context,
     get_season_started_events,
@@ -22,4 +23,5 @@ __all__ = [
     "get_home_context",
     "get_season_started_events",
     "load_event_results",
+    "calculate_championship_standings",
 ]

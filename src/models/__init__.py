@@ -1,4 +1,5 @@
 from src.models.schemas import (
+    ChampionshipStandingsPayload,
     ComparisonComputeResult,
     ComparisonSessionState,
     CornerAnalysisPayload,
@@ -11,6 +12,7 @@ from src.models.schemas import (
 
 __all__ = [
     "DriverDNAMetrics",
+    "ChampionshipStandingsPayload",
     "ComparisonComputeResult",
     "ComparisonSessionState",
     "CornerAnalysisPayload",
