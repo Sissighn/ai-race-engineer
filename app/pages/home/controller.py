@@ -36,6 +36,7 @@ def run_page() -> None:
     render_latest_gp(
         display_event=display_event,
         next_session_name=next_session_name,
+        next_session_time=next_session_time,
     )
 
     started_events = get_started_events_for_season(season_year)
