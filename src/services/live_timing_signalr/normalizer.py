@@ -109,6 +109,52 @@ def _normalise_timing_data(payload: dict[str, Any]) -> dict[str, Any]:
     return timing
 
 
+def _latest_stint(stints: Any) -> dict[str, Any]:
+    if isinstance(stints, dict):
+        values = list(stints.values())
+    elif isinstance(stints, list):
+        values = stints
+    else:
+        return {}
+
+    valid = [stint for stint in values if isinstance(stint, dict)]
+    if not valid:
+        return {}
+    return valid[-1]
+
+
+def _normalise_timing_app_data(payload: dict[str, Any]) -> dict[str, Any]:
+    lines = payload.get("Lines", payload)
+    tyres = {}
+    if not isinstance(lines, dict):
+        return tyres
+
+    for number, data in lines.items():
+        if not isinstance(data, dict):
+            continue
+        driver_number = str(data.get("RacingNumber") or number)
+        stint = _latest_stint(data.get("Stints") or data.get("stints"))
+        compound = (
+            stint.get("Compound")
+            or stint.get("compound")
+            or data.get("Compound")
+            or data.get("TyreCompound")
+        )
+        total_laps = (
+            stint.get("TotalLaps")
+            or stint.get("LapNumber")
+            or stint.get("Laps")
+            or data.get("TotalLaps")
+        )
+        tyres[driver_number] = {
+            "driver_number": driver_number,
+            "compound": compound,
+            "total_laps": total_laps,
+            "new": stint.get("New") if isinstance(stint, dict) else None,
+        }
+    return tyres
+
+
 def _normalise_car_data(payload: Any) -> dict[str, Any]:
     decoded = _decode_z_payload(payload)
     if not decoded:
@@ -180,6 +226,7 @@ def normalize_feed_message(message: Any) -> dict[str, Any]:
         "timing": {},
         "car_data": {},
         "positions": {},
+        "tyres": {},
         "race_control": [],
         "session": {},
         "track_status": {},
@@ -195,6 +242,8 @@ def normalize_feed_message(message: Any) -> dict[str, Any]:
             normalised["drivers"].update(_normalise_driver_list(payload))
         elif topic == "TimingData" and isinstance(payload, dict):
             normalised["timing"].update(_normalise_timing_data(payload))
+        elif topic == "TimingAppData" and isinstance(payload, dict):
+            normalised["tyres"].update(_normalise_timing_app_data(payload))
         elif topic == "CarData.z":
             normalised["car_data"].update(_normalise_car_data(payload))
         elif topic == "Position.z":
@@ -226,6 +275,7 @@ class LiveTimingState:
     timing: dict[str, Any] = field(default_factory=dict)
     car_data: dict[str, Any] = field(default_factory=dict)
     positions: dict[str, Any] = field(default_factory=dict)
+    tyres: dict[str, Any] = field(default_factory=dict)
     race_control: list[dict[str, Any]] = field(default_factory=list)
     session: dict[str, Any] = field(default_factory=dict)
     track_status: dict[str, Any] = field(default_factory=dict)
@@ -251,6 +301,7 @@ class LiveTimingState:
             _deep_merge(self.timing, update["timing"])
             _deep_merge(self.car_data, update["car_data"])
             _deep_merge(self.positions, update["positions"])
+            _deep_merge(self.tyres, update["tyres"])
             _deep_merge(self.session, update["session"])
             _deep_merge(self.track_status, update["track_status"])
             _deep_merge(self.weather, update["weather"])
@@ -281,6 +332,7 @@ class LiveTimingState:
                 "timing": copy.deepcopy(self.timing),
                 "car_data": copy.deepcopy(self.car_data),
                 "positions": copy.deepcopy(self.positions),
+                "tyres": copy.deepcopy(self.tyres),
                 "race_control": copy.deepcopy(self.race_control),
                 "session": copy.deepcopy(self.session),
                 "track_status": copy.deepcopy(self.track_status),
