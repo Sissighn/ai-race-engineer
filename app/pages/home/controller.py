@@ -40,6 +40,10 @@ def run_page() -> None:
     )
 
     started_events = get_started_events_for_season(season_year)
-    render_results_tables(season_year, started_events)
+    render_results_tables(
+        season_year,
+        started_events,
+        current_event_key=display_event["OfficialEventName"],
+    )
 
     render_countdown_section(next_session_time)
