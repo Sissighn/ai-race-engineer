@@ -88,3 +88,23 @@ def test_latest_car_snapshot_uses_latest_record(monkeypatch):
     )
 
     assert snapshot["speed"] == 250
+
+
+def test_fetch_json_applies_client_side_rate_limit(monkeypatch):
+    calls = []
+    sleeps = []
+    times = iter([10.0, 10.1, 10.5, 10.5])
+
+    monkeypatch.setattr(client, "_LAST_REQUEST_AT", 10.0)
+    monkeypatch.setattr(client.time, "monotonic", lambda: next(times))
+    monkeypatch.setattr(client.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(
+        client,
+        "urlopen",
+        lambda *_args, **_kwargs: calls.append(1) or _FakeResponse([]),
+    )
+
+    client._fetch_json("sessions", {"session_key": "latest"})
+
+    assert calls == [1]
+    assert sleeps == [pytest.approx(0.4)]
