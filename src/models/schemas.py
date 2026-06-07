@@ -62,6 +62,16 @@ class SeasonResultsPayload(BaseModel):
         }
 
 
+class ChampionshipStandingsPayload(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    drivers_df: pd.DataFrame
+    constructors_df: pd.DataFrame
+    season_year: int
+    events_count: int
+    sessions_loaded: int
+
+
 class ComparisonComputeResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
