@@ -3,9 +3,8 @@ import pandas as pd
 import pytest
 from types import SimpleNamespace
 
-from src.data import load_data
+from src.data import load_data, latest_session
 from src.exceptions import FastF1APIError, SessionDataError, TelemetryError
-
 
 RAW_LOAD_SESSION = load_data.load_session
 RAW_LOAD_TELEMETRY = load_data.load_telemetry
@@ -315,3 +314,36 @@ def test_get_tracks_for_year_exception_returns_empty(monkeypatch):
         lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("api down")),
     )
     assert RAW_GET_TRACKS_FOR_YEAR(2025) == []
+
+
+def test_load_single_session_results_includes_points(monkeypatch):
+    results = pd.DataFrame(
+        {
+            "Position": [1],
+            "Abbreviation": ["HAM"],
+            "DriverNumber": [44],
+            "TeamName": ["Mercedes"],
+            "Time": ["1:30.000"],
+            "Status": ["Finished"],
+            "Points": [25.0],
+        }
+    )
+
+    class FakeSession:
+        def __init__(self, results):
+            self.results = results
+
+        def load(self):
+            return None
+
+    monkeypatch.setattr(
+        latest_session.fastf1,
+        "get_session",
+        lambda *_a, **_k: FakeSession(results),
+    )
+
+    output = latest_session.load_single_session_results(2025, "Test GP", "R")
+
+    assert output is not None
+    assert "Points" in output.columns
+    assert output["Points"].iloc[0] == 25.0
