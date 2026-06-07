@@ -81,6 +81,32 @@ def test_normalize_feed_message_decodes_car_data_z():
     assert update["car_data"]["1"]["throttle"] == 96
 
 
+def test_normalize_feed_message_maps_timing_app_tyres():
+    update = normalize_feed_message(
+        [
+            "TimingAppData",
+            {
+                "Lines": {
+                    "1": {
+                        "RacingNumber": "1",
+                        "Stints": {
+                            "0": {
+                                "Compound": "SOFT",
+                                "TotalLaps": 8,
+                                "New": "true",
+                            }
+                        },
+                    }
+                }
+            },
+            "",
+        ]
+    )
+
+    assert update["tyres"]["1"]["compound"] == "SOFT"
+    assert update["tyres"]["1"]["total_laps"] == 8
+
+
 def test_live_timing_state_applies_messages_and_builds_snapshot():
     state = LiveTimingState()
     state.mark_connected(True)
