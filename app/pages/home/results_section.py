@@ -1,4 +1,3 @@
-import pandas as pd
 import streamlit as st
 
 from app.components.results_view import render_f1_table
@@ -9,18 +8,23 @@ from .data_logic import load_event_results
 logger = get_logger(__name__)
 
 
-def render_results_tables(season_year: int, started_events: list) -> None:
+def render_results_tables(
+    season_year: int,
+    started_events: list,
+    current_event_key: str | None = None,
+) -> None:
     """Render navigable results tables for all started events in a season.
 
     Args:
         season_year: F1 season year.
         started_events: List of event Series objects that have started.
+        current_event_key: Official event name for the active race weekend.
     """
     if not started_events:
         st.warning("No events have started yet this season.")
         return
 
-    _initialize_event_index(started_events)
+    _initialize_event_index(started_events, current_event_key)
 
     current_display_event = started_events[st.session_state.event_index]
     display_event_name = current_display_event["EventName"]
@@ -31,18 +35,17 @@ def render_results_tables(season_year: int, started_events: list) -> None:
         unsafe_allow_html=True,
     )
 
-    col_spacer_left, col_nav_prev, col_nav_title, col_nav_next, col_spacer_right = (
-        st.columns([1.5, 1, 6, 1, 1.5], gap="small")
+    col_spacer_left, col_nav_prev, col_nav_title, col_nav_next, col_spacer_right = st.columns(
+        [1.5, 1, 6, 1, 1.5], gap="small"
     )
 
     with col_spacer_left:
         st.empty()
 
     with col_nav_prev:
-        if st.button(
-            "←", key="prev_event", disabled=(st.session_state.event_index <= 0)
-        ):
+        if st.button("←", key="prev_event", disabled=(st.session_state.event_index <= 0)):
             st.session_state.event_index -= 1
+            st.session_state.event_index_user_selected = True
             st.rerun()
 
     with col_nav_title:
@@ -58,6 +61,7 @@ def render_results_tables(season_year: int, started_events: list) -> None:
             disabled=(st.session_state.event_index >= len(started_events) - 1),
         ):
             st.session_state.event_index += 1
+            st.session_state.event_index_user_selected = True
             st.rerun()
 
     with col_spacer_right:
@@ -90,33 +94,31 @@ def render_results_tables(season_year: int, started_events: list) -> None:
             )
 
 
-def _initialize_event_index(started_events: list) -> None:
-    if "event_index" not in st.session_state:
-        st.session_state.event_index = 0
+def _initialize_event_index(started_events: list, current_event_key: str | None) -> None:
+    target_index = _resolve_current_event_index(started_events, current_event_key)
+    previous_target_key = st.session_state.get("event_index_target_key")
+    target_key = started_events[target_index].get("OfficialEventName")
 
-    now = pd.Timestamp.now(tz="UTC")
-    latest_completed_idx_calc = 0
+    should_reset_to_current = (
+        "event_index" not in st.session_state
+        or previous_target_key != target_key
+        or not st.session_state.get("event_index_user_selected", False)
+    )
 
-    for i, event in enumerate(started_events):
-        last_session_date = None
-        for col in [
-            "Session5DateUtc",
-            "Session4DateUtc",
-            "Session3DateUtc",
-            "Session2DateUtc",
-            "Session1DateUtc",
-        ]:
-            if pd.notna(event.get(col)):
-                last_session_date = event[col]
-                break
-
-        if last_session_date and last_session_date < now:
-            latest_completed_idx_calc = i
-
-    if "event_index_initialized" not in st.session_state:
-        st.session_state.event_index = latest_completed_idx_calc
-        st.session_state.event_index_initialized = True
+    if should_reset_to_current:
+        st.session_state.event_index = target_index
+        st.session_state.event_index_target_key = target_key
+        st.session_state.event_index_user_selected = False
 
     st.session_state.event_index = max(
         0, min(st.session_state.event_index, len(started_events) - 1)
     )
+
+
+def _resolve_current_event_index(started_events: list, current_event_key: str | None) -> int:
+    if current_event_key:
+        for i, event in enumerate(started_events):
+            if event.get("OfficialEventName") == current_event_key:
+                return i
+
+    return len(started_events) - 1
