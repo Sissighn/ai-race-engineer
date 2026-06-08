@@ -107,4 +107,4 @@ def test_fetch_json_applies_client_side_rate_limit(monkeypatch):
     client._fetch_json("sessions", {"session_key": "latest"})
 
     assert calls == [1]
-    assert sleeps == [pytest.approx(0.4)]
+    assert sleeps == [pytest.approx(2.1)]
