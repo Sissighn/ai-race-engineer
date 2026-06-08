@@ -159,4 +159,36 @@ def test_build_live_timing_component_html_uses_signalr_snapshot_url():
 
     assert "http://localhost:8765" in html
     assert "/snapshot" in html
+    assert "F1 Pit Wall" in html
+    assert "Race Classification" in html
+    assert "Race Control" in html
+    assert "State" in html
+    assert "Stops" in html
+    assert "runState(row, snapshot)" in html
+    assert "isRedFlag(snapshot)" in html
+    assert 'if (row.stopped === true) return {label: "Out", cls: "out"}' in html
+    assert html.index('if (row.stopped === true) return {label: "Out", cls: "out"}') < html.index(
+        'if (isRedFlag(snapshot)) return {label: "", cls: ""}'
+    )
+    assert "mergeDrivers(snapshot)" in html
+    assert "driver?.broadcast_name" in html
+    assert "tyre.pit_stops" in html
+    assert 'String(value) === String(number)' in html
+    assert "InPit" in html
+    assert "PitOut" in html
+    assert "PitStop" in html
+    assert "Out" in html
+    assert "STOP" not in html
+    assert "penaltyMap(snapshot)" in html
+    assert "penaltySeconds(text)" in html
+    assert "penaltyLabel(value)" in html
+    assert "snapshot.penalties" in html
+    assert "penalty-mark" in html
+    assert "+${esc(row.penalty)}" in html
+    assert "Last Lap" in html
+    assert "Best Lap" in html
+    assert "Standings" not in html
+    assert "Analytics" not in html
+    assert "Replay" not in html
+    assert "Live Track Position" not in html
     assert "OpenF1" not in html
