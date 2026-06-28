@@ -52,9 +52,7 @@ def test_payload_from_signalr_converts_snapshot_to_page_payload():
             "message_count": 4,
             "seconds_since_last_message": 0.5,
             "session": {"Name": "Monaco Grand Prix"},
-            "drivers": {
-                "1": {"driver_number": "1", "tla": "VER", "team": "Red Bull Racing"}
-            },
+            "drivers": {"1": {"driver_number": "1", "tla": "VER", "team": "Red Bull Racing"}},
             "timing": {
                 "1": {
                     "position": "1",
@@ -78,6 +76,28 @@ def test_payload_from_signalr_converts_snapshot_to_page_payload():
     assert payload["tyres"]["1"]["compound"] == "SOFT"
     assert payload["laps"][0]["lap_duration"] == "1:12.345"
     assert payload["service"]["connected"] is True
+
+
+def test_signalr_session_helpers_use_meeting_name_for_event():
+    session = {
+        "Name": "Race",
+        "Type": "Race",
+        "Meeting": {
+            "Name": "Austrian Grand Prix",
+            "Location": "Spielberg",
+            "Circuit": {"ShortName": "Spielberg"},
+        },
+    }
+
+    assert controller._session_event_name(session) == "Austrian Grand Prix"
+    assert controller._session_label(session) == "Race"
+    assert controller._session_circuit_name(session) == "Spielberg"
+
+
+def test_display_current_lap_uses_signalr_lap_count_without_projection():
+    assert controller._display_current_lap({"CurrentLap": 29, "TotalLaps": 71}) == 29
+    assert controller._display_current_lap({"CurrentLap": 71, "TotalLaps": 71}) == 71
+    assert controller._display_current_lap({}) == "--"
 
 
 def test_load_live_timing_payload_prefers_connected_signalr(monkeypatch):
@@ -138,6 +158,19 @@ def test_build_classification_rows_adds_tyre_and_team_data():
     assert rows[0]["tyre_laps"] == 8
 
 
+def test_build_classification_rows_does_not_use_global_lap_as_driver_lap():
+    payload = {
+        "drivers": {63: {"tla": "RUS", "team": "Mercedes"}},
+        "positions": [{"driver_number": 63, "position": 1}],
+        "laps": [{"driver_number": 63, "gap_to_leader": "", "interval": ""}],
+        "lap_count": {"CurrentLap": 29, "TotalLaps": 71},
+    }
+
+    rows = controller._build_classification_rows(payload)
+
+    assert rows[0]["lap"] == "-"
+
+
 def test_live_timing_page_uses_client_side_polling_without_streamlit_refresh():
     source = Path(controller.__file__).read_text(encoding="utf-8")
 
@@ -173,7 +206,7 @@ def test_build_live_timing_component_html_uses_signalr_snapshot_url():
     assert "mergeDrivers(snapshot)" in html
     assert "driver?.broadcast_name" in html
     assert "tyre.pit_stops" in html
-    assert 'String(value) === String(number)' in html
+    assert "String(value) === String(number)" in html
     assert "InPit" in html
     assert "PitOut" in html
     assert "PitStop" in html
@@ -185,6 +218,12 @@ def test_build_live_timing_component_html_uses_signalr_snapshot_url():
     assert "snapshot.penalties" in html
     assert "penalty-mark" in html
     assert "+${esc(row.penalty)}" in html
+    assert "sessionEventName(session)" in html
+    assert "session?.Meeting?.Name" in html
+    assert "sessionLabel(session)" in html
+    assert "displayRaceLap(lap)" in html
+    assert 'lap: row.lap_number || "-"' in html
+    assert "row.lap_number || (snapshot.lap_count || {}).CurrentLap" not in html
     assert "Last Lap" in html
     assert "Best Lap" in html
     assert "Standings" not in html
