@@ -14,10 +14,15 @@ services:
       HOME: /app
       XDG_CACHE_HOME: /app/cache/xdg
       XDG_DATA_HOME: /app/data/xdg
+      F1_SIGNALR_ENABLED: "true"
       F1_SIGNALR_SERVICE_HOST: 0.0.0.0
       F1_SIGNALR_SERVICE_PORT: "8765"
-      F1_SIGNALR_NO_AUTH: "false"
+      F1_SIGNALR_NO_AUTH: "true"
       F1_SIGNALR_RECONNECT_DELAY: "5"
+      OPENF1_LIVE_ENABLED: "false"
+      OPENF1_LIVE_POLL_INTERVAL: "18"
+      OPENF1_LIVE_WINDOW_SECONDS: "45"
+      OPENF1_MIN_REQUEST_INTERVAL: "2.1"
 
   ai-race-engineer:
     build:
@@ -42,6 +47,7 @@ services:
       LIVE_TIMING_SIGNALR_URL: http://f1-live-timing:8765
       LIVE_TIMING_BROWSER_SIGNALR_URL: http://localhost:8765
       LIVE_TIMING_SIGNALR_TIMEOUT: "2"
+      OPENF1_MIN_REQUEST_INTERVAL: "2.1"
     volumes:
       - fastf1-cache:/app/cache
       - app-logs:/app/logs
