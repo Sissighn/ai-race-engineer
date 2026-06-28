@@ -1,6 +1,7 @@
 import base64
 import copy
 import json
+import re
 import time
 import zlib
 from dataclasses import dataclass, field
@@ -18,14 +19,36 @@ CAR_CHANNELS = {
     "45": "drs",
 }
 
+PENALTY_WORD_SECONDS = {
+    "five": 5,
+    "ten": 10,
+    "twenty": 20,
+    "thirty": 30,
+}
+
 
 def _deep_merge(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
     for key, value in update.items():
+        if value is None:
+            continue
         if isinstance(value, dict) and isinstance(base.get(key), dict):
             _deep_merge(base[key], value)
+        elif key == "pit_stops" and isinstance(base.get(key), int) and isinstance(value, int):
+            base[key] = max(base[key], value)
         else:
             base[key] = value
     return base
+
+
+def _int_or_none(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_lap_marker(value: Any) -> bool:
+    return bool(re.fullmatch(r"\s*\+?\s*LAP\s+\d+\s*", str(value or ""), re.IGNORECASE))
 
 
 def _decode_z_payload(payload: Any) -> dict[str, Any] | None:
@@ -66,14 +89,18 @@ def _normalise_driver_list(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(data, dict):
             continue
         driver_number = str(data.get("RacingNumber") or number)
-        drivers[driver_number] = {
-            "driver_number": driver_number,
-            "tla": data.get("Tla") or data.get("TLA") or driver_number,
-            "broadcast_name": data.get("BroadcastName") or data.get("FullName") or driver_number,
-            "full_name": data.get("FullName") or data.get("BroadcastName") or driver_number,
-            "team": data.get("TeamName") or data.get("Team") or "-",
-            "team_colour": data.get("TeamColour") or data.get("TeamColor") or "",
+        driver = {"driver_number": driver_number}
+        field_map = {
+            "tla": data.get("Tla") or data.get("TLA"),
+            "broadcast_name": data.get("BroadcastName"),
+            "full_name": data.get("FullName"),
+            "team": data.get("TeamName") or data.get("Team"),
+            "team_colour": data.get("TeamColour") or data.get("TeamColor"),
         }
+        for key, value in field_map.items():
+            if value not in (None, ""):
+                driver[key] = value
+        drivers[driver_number] = driver
     return drivers
 
 
@@ -87,40 +114,110 @@ def _normalise_timing_data(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(data, dict):
             continue
         driver_number = str(data.get("RacingNumber") or number)
-        sectors = data.get("Sectors") or []
-        timing[driver_number] = {
-            "driver_number": driver_number,
-            "position": data.get("Position"),
-            "gap_to_leader": data.get("GapToLeader"),
-            "interval": data.get("IntervalToPositionAhead", {}).get("Value")
-            if isinstance(data.get("IntervalToPositionAhead"), dict)
-            else data.get("IntervalToPositionAhead"),
-            "last_lap": data.get("LastLapTime", {}).get("Value")
-            if isinstance(data.get("LastLapTime"), dict)
-            else data.get("LastLapTime"),
-            "best_lap": data.get("BestLapTime", {}).get("Value")
-            if isinstance(data.get("BestLapTime"), dict)
-            else data.get("BestLapTime"),
-            "sectors": sectors,
-            "in_pit": data.get("InPit"),
-            "pit_out": data.get("PitOut"),
-            "stopped": data.get("Stopped"),
-        }
+        row: dict[str, Any] = {"driver_number": driver_number}
+
+        position = data.get("Position")
+        is_leader = str(position) == "1"
+        if position:
+            row["position"] = position
+
+        if is_leader:
+            row["gap_to_leader"] = ""
+            row["interval"] = ""
+
+        if not is_leader and (gap := data.get("GapToLeader")) and not _is_lap_marker(gap):
+            row["gap_to_leader"] = gap
+
+        if "IntervalToPositionAhead" in data:
+            interval = data.get("IntervalToPositionAhead")
+            if isinstance(interval, dict):
+                if not is_leader and (value := interval.get("Value")) and not _is_lap_marker(value):
+                    row["interval"] = value
+            elif not is_leader and interval and not _is_lap_marker(interval):
+                row["interval"] = interval
+
+        last_lap = data.get("LastLapTime")
+        if isinstance(last_lap, dict):
+            if value := last_lap.get("Value"):
+                row["last_lap"] = value
+        elif last_lap:
+            row["last_lap"] = last_lap
+
+        best_lap = data.get("BestLapTime")
+        if isinstance(best_lap, dict):
+            if value := best_lap.get("Value"):
+                row["best_lap"] = value
+        elif best_lap:
+            row["best_lap"] = best_lap
+
+        sectors = data.get("Sectors")
+        if isinstance(sectors, list):
+            row["sectors"] = {str(index): sector for index, sector in enumerate(sectors)}
+        elif isinstance(sectors, dict):
+            row["sectors"] = sectors
+
+        for source, target in (
+            ("InPit", "in_pit"),
+            ("PitOut", "pit_out"),
+            ("Stopped", "stopped"),
+        ):
+            if source in data:
+                row[target] = data[source]
+
+        timing[driver_number] = row
     return timing
 
 
-def _latest_stint(stints: Any) -> dict[str, Any]:
+def _stint_entries(stints: Any) -> list[tuple[Any, dict[str, Any]]]:
     if isinstance(stints, dict):
-        values = list(stints.values())
+        values = list(stints.items())
     elif isinstance(stints, list):
-        values = stints
+        values = list(enumerate(stints))
     else:
-        return {}
+        return []
 
-    valid = [stint for stint in values if isinstance(stint, dict)]
+    return [(key, stint) for key, stint in values if isinstance(stint, dict)]
+
+
+def _stint_values(stints: Any) -> list[dict[str, Any]]:
+    return [stint for _, stint in _stint_entries(stints)]
+
+
+def _stint_index(key: Any, stint: dict[str, Any]) -> int | None:
+    for value in (
+        key,
+        stint.get("Stint"),
+        stint.get("StintNumber"),
+        stint.get("stint_number"),
+        stint.get("Number"),
+    ):
+        if (index := _int_or_none(value)) is not None:
+            return index
+    return None
+
+
+def _latest_stint(stints: Any) -> dict[str, Any]:
+    valid = _stint_entries(stints)
     if not valid:
         return {}
-    return valid[-1]
+    return max(
+        valid,
+        key=lambda entry: (
+            _stint_index(entry[0], entry[1]) if _stint_index(entry[0], entry[1]) is not None else -1
+        ),
+    )[1]
+
+
+def _pit_stop_count_from_stints(stints: Any) -> int:
+    entries = _stint_entries(stints)
+    if not entries:
+        return 0
+
+    counts = [max(len(entries) - 1, 0)]
+    for key, stint in entries:
+        if (index := _stint_index(key, stint)) is not None:
+            counts.append(max(index, 0))
+    return max(counts)
 
 
 def _normalise_timing_app_data(payload: dict[str, Any]) -> dict[str, Any]:
@@ -133,7 +230,8 @@ def _normalise_timing_app_data(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(data, dict):
             continue
         driver_number = str(data.get("RacingNumber") or number)
-        stint = _latest_stint(data.get("Stints") or data.get("stints"))
+        stints = data.get("Stints") or data.get("stints")
+        stint = _latest_stint(stints)
         compound = (
             stint.get("Compound")
             or stint.get("compound")
@@ -151,6 +249,7 @@ def _normalise_timing_app_data(payload: dict[str, Any]) -> dict[str, Any]:
             "compound": compound,
             "total_laps": total_laps,
             "new": stint.get("New") if isinstance(stint, dict) else None,
+            "pit_stops": _pit_stop_count_from_stints(stints),
         }
     return tyres
 
@@ -208,16 +307,68 @@ def _normalise_race_control(payload: dict[str, Any]) -> list[dict[str, Any]]:
     for message in messages:
         if not isinstance(message, dict):
             continue
+        text = message.get("Message") or message.get("Title") or ""
+        driver_number = message.get("RacingNumber") or _driver_number_from_text(text)
+        penalty_seconds = _penalty_seconds_from_text(text)
         normalised.append(
             {
                 "date": message.get("Utc") or message.get("Date"),
                 "category": message.get("Category") or message.get("Flag") or "MESSAGE",
-                "message": message.get("Message") or message.get("Title") or "",
-                "driver_number": message.get("RacingNumber"),
+                "message": text,
+                "driver_number": driver_number,
                 "lap": message.get("Lap"),
+                "penalty_seconds": penalty_seconds,
             }
         )
     return normalised
+
+
+def _driver_number_from_text(text: Any) -> str | None:
+    match = re.search(r"\bcar\s*#?\s*(\d{1,3})\b", str(text), flags=re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def _penalty_seconds_from_text(text: Any) -> int | None:
+    text_value = str(text)
+    if not re.search(r"\bpenalt", text_value, flags=re.IGNORECASE):
+        return None
+
+    numeric = re.search(
+        r"\b(\d{1,2})\s*(?:second|seconds|sec|s)\b", text_value, flags=re.IGNORECASE
+    )
+    if numeric:
+        return int(numeric.group(1))
+
+    word = re.search(
+        r"\b(five|ten|twenty|thirty)\s+(?:second|seconds|sec|s)\b",
+        text_value,
+        flags=re.IGNORECASE,
+    )
+    if word:
+        return PENALTY_WORD_SECONDS[word.group(1).lower()]
+    return None
+
+
+def _penalty_events_from_race_control(
+    messages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    events = []
+    for message in messages:
+        text = message.get("message") or message.get("Message") or ""
+        driver_number = message.get("driver_number") or _driver_number_from_text(text)
+        penalty_seconds = message.get("penalty_seconds") or _penalty_seconds_from_text(text)
+        if not driver_number or not penalty_seconds:
+            continue
+        events.append(
+            {
+                "driver_number": str(driver_number),
+                "seconds": penalty_seconds,
+                "message": text,
+                "date": message.get("date"),
+                "lap": message.get("lap"),
+            }
+        )
+    return events
 
 
 def normalize_feed_message(message: Any) -> dict[str, Any]:
@@ -228,6 +379,7 @@ def normalize_feed_message(message: Any) -> dict[str, Any]:
         "positions": {},
         "tyres": {},
         "race_control": [],
+        "penalty_events": [],
         "session": {},
         "track_status": {},
         "weather": {},
@@ -249,7 +401,9 @@ def normalize_feed_message(message: Any) -> dict[str, Any]:
         elif topic == "Position.z":
             normalised["positions"].update(_normalise_position_data(payload))
         elif topic == "RaceControlMessages" and isinstance(payload, dict):
-            normalised["race_control"].extend(_normalise_race_control(payload))
+            race_control = _normalise_race_control(payload)
+            normalised["race_control"].extend(race_control)
+            normalised["penalty_events"].extend(_penalty_events_from_race_control(race_control))
         elif topic == "SessionInfo" and isinstance(payload, dict):
             normalised["session"].update(payload)
         elif topic == "SessionStatus" and isinstance(payload, dict):
@@ -267,6 +421,7 @@ def normalize_feed_message(message: Any) -> dict[str, Any]:
 @dataclass
 class LiveTimingState:
     started_at: float = field(default_factory=time.time)
+    source: str = "offline"
     connected: bool = False
     last_message_at: float | None = None
     message_count: int = 0
@@ -277,12 +432,14 @@ class LiveTimingState:
     positions: dict[str, Any] = field(default_factory=dict)
     tyres: dict[str, Any] = field(default_factory=dict)
     race_control: list[dict[str, Any]] = field(default_factory=list)
+    penalties: dict[str, Any] = field(default_factory=dict)
     session: dict[str, Any] = field(default_factory=dict)
     track_status: dict[str, Any] = field(default_factory=dict)
     weather: dict[str, Any] = field(default_factory=dict)
     lap_count: dict[str, Any] = field(default_factory=dict)
     raw_categories: dict[str, Any] = field(default_factory=dict)
     _lock: RLock = field(default_factory=RLock, repr=False)
+    _penalty_event_keys: set[str] = field(default_factory=set, repr=False)
 
     def mark_connected(self, connected: bool) -> None:
         with self._lock:
@@ -295,6 +452,7 @@ class LiveTimingState:
     def apply_message(self, message: Any) -> None:
         update = normalize_feed_message(message)
         with self._lock:
+            self.source = "f1-signalr"
             self.message_count += 1
             self.last_message_at = time.time()
             _deep_merge(self.drivers, update["drivers"])
@@ -307,15 +465,59 @@ class LiveTimingState:
             _deep_merge(self.weather, update["weather"])
             _deep_merge(self.lap_count, update["lap_count"])
             _deep_merge(self.raw_categories, update["raw_categories"])
+            self._apply_penalty_events(update["penalty_events"])
             if update["race_control"]:
                 self.race_control.extend(update["race_control"])
                 self.race_control = self.race_control[-50:]
+
+    def apply_openf1_snapshot(self, snapshot: dict[str, Any]) -> None:
+        with self._lock:
+            self.source = "openf1"
+            self.connected = True
+            self.message_count += 1
+            self.last_message_at = time.time()
+            self.error = snapshot.get("error")
+            _deep_merge(self.drivers, snapshot.get("drivers") or {})
+            _deep_merge(self.timing, snapshot.get("timing") or {})
+            _deep_merge(self.car_data, snapshot.get("car_data") or {})
+            _deep_merge(self.positions, snapshot.get("positions") or {})
+            _deep_merge(self.tyres, snapshot.get("tyres") or {})
+            _deep_merge(self.session, snapshot.get("session") or {})
+            _deep_merge(self.track_status, snapshot.get("track_status") or {})
+            _deep_merge(self.weather, snapshot.get("weather") or {})
+            _deep_merge(self.lap_count, snapshot.get("lap_count") or {})
+            self.raw_categories["OpenF1"] = {"timestamp": self.last_message_at}
+            race_control = snapshot.get("race_control") or []
+            if race_control:
+                self.race_control.extend(race_control)
+                self.race_control = self.race_control[-50:]
+                self._apply_penalty_events(_penalty_events_from_race_control(race_control))
+
+    def _apply_penalty_events(self, events: list[dict[str, Any]]) -> None:
+        for event in events:
+            driver_number = str(event.get("driver_number") or "")
+            seconds = _int_or_none(event.get("seconds"))
+            if not driver_number or seconds is None:
+                continue
+            key = "|".join(
+                str(event.get(field) or "") for field in ("driver_number", "date", "lap", "message")
+            )
+            if key in self._penalty_event_keys:
+                continue
+            self._penalty_event_keys.add(key)
+            penalty = self.penalties.setdefault(
+                driver_number,
+                {"seconds": 0, "label": "0s", "events": []},
+            )
+            penalty["seconds"] += seconds
+            penalty["label"] = f"{penalty['seconds']}s"
+            penalty["events"].append(copy.deepcopy(event))
 
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             now = time.time()
             return {
-                "source": "f1-signalr",
+                "source": self.source,
                 "connected": self.connected,
                 "healthy": self.connected and self.last_message_at is not None,
                 "started_at": self.started_at,
@@ -334,6 +536,7 @@ class LiveTimingState:
                 "positions": copy.deepcopy(self.positions),
                 "tyres": copy.deepcopy(self.tyres),
                 "race_control": copy.deepcopy(self.race_control),
+                "penalties": copy.deepcopy(self.penalties),
                 "session": copy.deepcopy(self.session),
                 "track_status": copy.deepcopy(self.track_status),
                 "weather": copy.deepcopy(self.weather),
