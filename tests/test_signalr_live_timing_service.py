@@ -106,7 +106,7 @@ def test_normalize_feed_message_maps_timing_app_tyres():
                                 "Compound": "SOFT",
                                 "TotalLaps": 8,
                                 "New": "true",
-                            }
+                            },
                         },
                     }
                 }
@@ -397,6 +397,71 @@ def test_timing_data_leader_update_clears_gap_and_interval():
     )
 
     row = state.snapshot()["timing"]["1"]
+
+    assert row["position"] == "1"
+    assert row["gap_to_leader"] == ""
+    assert row["interval"] == ""
+
+
+def test_timing_data_leader_ignores_lap_marker_as_gap():
+    state = LiveTimingState()
+    state.apply_message(
+        [
+            "TimingData",
+            {
+                "Lines": {
+                    "12": {
+                        "RacingNumber": "12",
+                        "Position": "1",
+                        "GapToLeader": "LAP 23",
+                        "IntervalToPositionAhead": {"Value": "LAP 23"},
+                    }
+                }
+            },
+            "",
+        ]
+    )
+
+    row = state.snapshot()["timing"]["12"]
+
+    assert row["position"] == "1"
+    assert row["gap_to_leader"] == ""
+    assert row["interval"] == ""
+
+
+def test_timing_data_ignores_lap_marker_gap_without_position_delta():
+    state = LiveTimingState()
+    state.apply_message(
+        [
+            "TimingData",
+            {
+                "Lines": {
+                    "63": {
+                        "RacingNumber": "63",
+                        "Position": "1",
+                    }
+                }
+            },
+            "",
+        ]
+    )
+    state.apply_message(
+        [
+            "TimingData",
+            {
+                "Lines": {
+                    "63": {
+                        "RacingNumber": "63",
+                        "GapToLeader": "LAP 29",
+                        "IntervalToPositionAhead": {"Value": "LAP 29"},
+                    }
+                }
+            },
+            "",
+        ]
+    )
+
+    row = state.snapshot()["timing"]["63"]
 
     assert row["position"] == "1"
     assert row["gap_to_leader"] == ""
