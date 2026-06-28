@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from src.logging import get_logger, initialize_logging
 
 from .normalizer import LiveTimingState
-from .signalr_client import F1SignalRWorker
+from .openf1_worker import OpenF1LiveTimingWorker
 
 initialize_logging()
 logger = get_logger(__name__)
@@ -76,10 +76,24 @@ class LiveTimingHTTPHandler(BaseHTTPRequestHandler):
 def run_server() -> None:
     host = os.getenv("F1_SIGNALR_SERVICE_HOST", "0.0.0.0")
     port = int(os.getenv("F1_SIGNALR_SERVICE_PORT", "8765"))
+    signalr_enabled = os.getenv("F1_SIGNALR_ENABLED", "true").lower() == "true"
+    openf1_enabled = os.getenv("OPENF1_LIVE_ENABLED", "false").lower() == "true"
 
     state = LiveTimingState()
-    worker = F1SignalRWorker(state)
-    worker.start()
+    workers = []
+    if openf1_enabled:
+        openf1_worker = OpenF1LiveTimingWorker(state)
+        openf1_worker.start()
+        workers.append(openf1_worker)
+        logger.info("OpenF1 live timing fallback started")
+
+    if signalr_enabled:
+        from .signalr_client import F1SignalRWorker
+
+        signalr_worker = F1SignalRWorker(state)
+        signalr_worker.start()
+        workers.append(signalr_worker)
+        logger.info("F1 SignalR live timing worker started")
 
     LiveTimingHTTPHandler.state = state
     server = ThreadingHTTPServer((host, port), LiveTimingHTTPHandler)
@@ -88,7 +102,8 @@ def run_server() -> None:
 
     def shutdown(_signum=None, _frame=None):
         logger.info("Stopping F1 SignalR live timing service")
-        worker.stop()
+        for worker in workers:
+            worker.stop()
         stop_event.set()
 
     signal.signal(signal.SIGTERM, shutdown)
