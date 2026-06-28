@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 OPENF1_BASE_URL = os.getenv("OPENF1_BASE_URL", "https://api.openf1.org/v1")
 OPENF1_TIMEOUT = float(os.getenv("OPENF1_TIMEOUT", "10"))
-OPENF1_MIN_REQUEST_INTERVAL = float(os.getenv("OPENF1_MIN_REQUEST_INTERVAL", "0.4"))
+OPENF1_MIN_REQUEST_INTERVAL = float(os.getenv("OPENF1_MIN_REQUEST_INTERVAL", "2.1"))
 _REQUEST_LOCK = threading.Lock()
 _LAST_REQUEST_AT = 0.0
 
@@ -109,11 +109,40 @@ def get_latest_laps(session_key: int | str = "latest") -> list[dict[str, Any]]:
     return sorted(latest, key=lambda row: int(row.get("driver_number") or 999))
 
 
+def get_latest_intervals(session_key: int | str = "latest") -> list[dict[str, Any]]:
+    intervals = _fetch_json("intervals", {"session_key": session_key})
+    latest = _latest_by_driver(intervals)
+    return sorted(latest, key=lambda row: int(row.get("driver_number") or 999))
+
+
+def get_latest_stints(session_key: int | str = "latest") -> list[dict[str, Any]]:
+    stints = _fetch_json("stints", {"session_key": session_key})
+    latest: dict[int, dict[str, Any]] = {}
+    for stint in stints:
+        driver_number = stint.get("driver_number")
+        if driver_number is None:
+            continue
+        driver_number = int(driver_number)
+        current = latest.get(driver_number)
+        current_stint = int((current or {}).get("stint_number") or 0)
+        next_stint = int(stint.get("stint_number") or 0)
+        if current is None or next_stint >= current_stint:
+            latest[driver_number] = stint
+    return list(latest.values())
+
+
 def _recent_window_start(session: dict[str, Any] | None) -> str:
     now = datetime.now(UTC)
     session_end = _parse_dt((session or {}).get("date_end"))
     anchor = min(now, session_end) if session_end > datetime.min.replace(tzinfo=UTC) else now
     return (anchor - timedelta(minutes=5)).isoformat()
+
+
+def _window_start(seconds: int, session: dict[str, Any] | None = None) -> str:
+    now = datetime.now(UTC)
+    session_end = _parse_dt((session or {}).get("date_end"))
+    anchor = min(now, session_end) if session_end > datetime.min.replace(tzinfo=UTC) else now
+    return (anchor - timedelta(seconds=seconds)).isoformat()
 
 
 def get_latest_car_snapshot(
@@ -138,6 +167,38 @@ def get_latest_car_snapshot(
     if not records:
         return None
     return max(records, key=lambda row: _parse_dt(row.get("date")))
+
+
+def get_latest_car_data(
+    session_key: int | str,
+    *,
+    session: dict[str, Any] | None = None,
+    window_seconds: int = 30,
+) -> list[dict[str, Any]]:
+    records = _fetch_json(
+        "car_data",
+        {
+            "session_key": session_key,
+            "date>=": _window_start(window_seconds, session),
+        },
+    )
+    return sorted(_latest_by_driver(records), key=lambda row: int(row.get("driver_number") or 999))
+
+
+def get_latest_location(
+    session_key: int | str,
+    *,
+    session: dict[str, Any] | None = None,
+    window_seconds: int = 30,
+) -> list[dict[str, Any]]:
+    records = _fetch_json(
+        "location",
+        {
+            "session_key": session_key,
+            "date>=": _window_start(window_seconds, session),
+        },
+    )
+    return sorted(_latest_by_driver(records), key=lambda row: int(row.get("driver_number") or 999))
 
 
 def get_latest_race_control(session_key: int | str = "latest", limit: int = 8) -> list[dict[str, Any]]:
