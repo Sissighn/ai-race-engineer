@@ -17,12 +17,10 @@ class Navbar:
         path = os.path.join(self.assets_path, filename)
         if os.path.exists(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     return f.read()
             except Exception as e:
-                logger.error(
-                    "Failed to load text asset", filename=filename, error=str(e)
-                )
+                logger.error("Failed to load text asset", filename=filename, error=str(e))
         return ""
 
     def _get_logo_b64(self):
@@ -45,9 +43,7 @@ class Navbar:
             return
 
         logo_tag = (
-            f'<img src="data:image/png;base64,{logo_b64}" class="nav-logo">'
-            if logo_b64
-            else ""
+            f'<img src="data:image/png;base64,{logo_b64}" class="nav-logo">' if logo_b64 else ""
         )
 
         # Inject CSS and logo into the HTML template placeholders
