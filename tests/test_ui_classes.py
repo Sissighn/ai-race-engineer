@@ -33,9 +33,7 @@ def test_navbar_get_logo_missing_returns_none(monkeypatch):
 def test_navbar_render_uses_markdown_when_html_unavailable(monkeypatch):
     nav = Navbar()
 
-    monkeypatch.setattr(
-        nav, "_load_asset", lambda name: "<div>{{CSS_STYLE}}{{LOGO_HTML}}</div>"
-    )
+    monkeypatch.setattr(nav, "_load_asset", lambda name: "<div>{{CSS_STYLE}}{{LOGO_HTML}}</div>")
     monkeypatch.setattr(nav, "_get_logo_b64", lambda: None)
 
     calls = []
@@ -50,3 +48,15 @@ def test_navbar_render_uses_markdown_when_html_unavailable(monkeypatch):
 
     assert len(calls) == 1
     assert "<div>" in calls[0][0][0]
+
+
+def test_navbar_template_contains_mobile_dropdown_controls():
+    nav = Navbar()
+    html = nav._load_asset("navbar.html")
+    css = nav._load_asset("navbar.css")
+
+    assert 'id="nav-toggle"' in html
+    assert 'class="nav-burger"' in html
+    assert 'class="f1-links"' in html
+    assert "#nav-toggle:checked ~ .f1-links" in css
+    assert "#nav-toggle:checked + .nav-burger" in css
